@@ -9,6 +9,11 @@ import { Logo } from './components/logo';
 import { DashboardPage } from './pages/dashboard';
 import { LoginPage } from './pages/login';
 import { RegisterPage } from './pages/register';
+import { ItemsListPage } from './pages/items/list';
+import { ItemsCreatePage } from './pages/items/create';
+import { ItemsEditPage } from './pages/items/edit';
+import { ItemsShowPage } from './pages/items/show';
+import { ItemsLowStockPage } from './pages/items/low-stock';
 
 function App() {
   return (
@@ -21,7 +26,14 @@ function App() {
         i18nProvider={i18nProvider}
         resources={[
           { name: 'dashboard', list: '/' },
-          { name: 'items', list: '/items' },
+          {
+            name: 'items',
+            list: '/items',
+            create: '/items/create',
+            edit: '/items/:id/edit',
+            show: '/items/:id',
+            meta: { canDelete: true },
+          },
           { name: 'orders', list: '/orders' },
           { name: 'price-table', list: '/price-table' },
           { name: 'cash-register', list: '/cash-register' },
@@ -39,6 +51,11 @@ function App() {
             }
           >
             <Route index element={<DashboardPage />} />
+            <Route path="/items/create" element={<ItemsCreatePage />} />
+            <Route path="/items/low-stock" element={<ItemsLowStockPage />} />
+            <Route path="/items/:id/edit" element={<ItemsEditPage />} />
+            <Route path="/items/:id" element={<ItemsShowPage />} />
+            <Route path="/items" element={<ItemsListPage />} />
             <Route path="*" element={<DashboardPage />} />
           </Route>
           <Route

@@ -17,16 +17,20 @@ function mapResource(resource: string): string {
   return resourceMap[resource] || resource;
 }
 
-function adaptListResponse(data: Record<string, unknown>): { data: unknown[]; total: number } {
+function adaptListResponse(data: unknown): { data: unknown[]; total: number } {
+  if (Array.isArray(data)) {
+    return { data, total: data.length };
+  }
+  const obj = data as Record<string, unknown>;
   const items =
-    (data.items as unknown[]) ||
-    (data.orders as unknown[]) ||
-    (data.registers as unknown[]) ||
-    (data.data as unknown[]) ||
+    (obj.items as unknown[]) ||
+    (obj.orders as unknown[]) ||
+    (obj.registers as unknown[]) ||
+    (obj.data as unknown[]) ||
     [];
   const total =
-    data.total !== undefined && data.total !== null
-      ? (data.total as number)
+    obj.total !== undefined && obj.total !== null
+      ? (obj.total as number)
       : items.length;
   return { data: items, total };
 }
@@ -57,7 +61,7 @@ export const dataProvider = {
 
     const { data } = await apiClient.get(`/${endpoint}`, { params });
 
-    return adaptListResponse(data as Record<string, unknown>);
+    return adaptListResponse(data);
   },
 
   getMany: async ({ resource, ids }) => {
