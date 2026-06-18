@@ -8,6 +8,7 @@ import { i18nProvider } from './i18n';
 import { Logo } from './components/logo';
 import { DashboardPage } from './pages/dashboard';
 import { LoginPage } from './pages/login';
+import { RegisterPage } from './pages/register';
 
 function App() {
   return (
@@ -44,6 +45,14 @@ function App() {
             path="/login"
             element={
               <Authenticated key="auth" fallback={<LoginPage />}>
+                <Navigate to="/" />
+              </Authenticated>
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <Authenticated key="register" fallback={<RegisterPage />}>
                 <Navigate to="/" />
               </Authenticated>
             }

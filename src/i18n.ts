@@ -15,6 +15,16 @@ const translations: Record<string, string> = {
   'pages.login.errors.requiredPassword': 'Senha é obrigatória',
   'pages.login.buttons.haveAccount': 'Já tem conta?',
   'pages.login.buttons.submit': 'Entrar',
+  'pages.register.title': 'Criar conta',
+  'pages.register.email': 'Email',
+  'pages.register.fields.email': 'Email',
+  'pages.register.errors.requiredEmail': 'Email é obrigatório',
+  'pages.register.errors.validEmail': 'Email inválido',
+  'pages.register.fields.password': 'Senha',
+  'pages.register.errors.requiredPassword': 'Senha é obrigatória',
+  'pages.register.buttons.submit': 'Cadastrar',
+  'pages.register.buttons.haveAccount': 'Já tem conta?',
+  'pages.register.signin': 'Entrar',
 };
 
 export const i18nProvider: I18nProvider = {
