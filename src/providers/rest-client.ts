@@ -45,8 +45,11 @@ apiClient.interceptors.response.use(
       }
     }
 
-    const code = error.response?.data?.code;
-    if (code) {
+    const data = error.response?.data;
+    const code = data?.code;
+    if (data?.message) {
+      error.message = data.message;
+    } else if (code) {
       error.message = translateError(code);
     }
 

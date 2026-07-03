@@ -1,5 +1,5 @@
 import { useTable, List } from '@refinedev/antd';
-import { useDelete, type CrudFilter } from '@refinedev/core';
+import { useDelete, useInvalidate, type CrudFilter } from '@refinedev/core';
 import { Table, Space, Tag, Button, Modal, Typography, Select, Input } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
@@ -43,6 +43,7 @@ export const ItemsListPage = () => {
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
   const { mutate: deleteMutate } = useDelete();
+  const invalidate = useInvalidate();
 
   const { tableProps, setFilters } = useTable<IItem>({
     resource: 'items',
@@ -188,7 +189,11 @@ export const ItemsListPage = () => {
           />
         </Table>
       </List>
-      <CsvImportModal open={csvModalOpen} onClose={() => setCsvModalOpen(false)} />
+      <CsvImportModal
+        open={csvModalOpen}
+        onClose={() => setCsvModalOpen(false)}
+        onSuccess={() => invalidate({ resource: 'items', invalidates: ['list'] })}
+      />
     </>
   );
 };
