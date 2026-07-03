@@ -1,7 +1,15 @@
 import { Refine, Authenticated } from '@refinedev/core';
-import { ThemedLayoutV2, useNotificationProvider } from '@refinedev/antd';
+import { ThemedLayoutV2, ThemedSiderV2, useNotificationProvider } from '@refinedev/antd';
 import routerBindings from '@refinedev/react-router-v6';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  DollarSign,
+  Banknote,
+  TrendingDown,
+} from 'lucide-react';
 import { dataProvider } from './providers/data-provider';
 import { authProvider } from './providers/auth-provider';
 import { i18nProvider } from './i18n';
@@ -10,9 +18,6 @@ import { DashboardPage } from './pages/dashboard';
 import { LoginPage } from './pages/login';
 import { RegisterPage } from './pages/register';
 import { ItemsListPage } from './pages/items/list';
-import { ItemsCreatePage } from './pages/items/create';
-import { ItemsEditPage } from './pages/items/edit';
-import { ItemsShowPage } from './pages/items/show';
 import { ItemsLowStockPage } from './pages/items/low-stock';
 
 function App() {
@@ -25,36 +30,30 @@ function App() {
         notificationProvider={useNotificationProvider}
         i18nProvider={i18nProvider}
         resources={[
-          { name: 'dashboard', list: '/' },
+          { name: 'dashboard', list: '/', meta: { icon: <LayoutDashboard size={20} /> } },
           {
             name: 'items',
             list: '/items',
-            create: '/items/create',
-            edit: '/items/:id/edit',
-            show: '/items/:id',
-            meta: { canDelete: true },
+            meta: { icon: <Package size={20} />, canDelete: true },
           },
-          { name: 'orders', list: '/orders' },
-          { name: 'price-table', list: '/price-table' },
-          { name: 'cash-register', list: '/cash-register' },
-          { name: 'expenses', list: '/expenses' },
+          { name: 'orders', list: '/orders', meta: { icon: <ShoppingCart size={20} /> } },
+          { name: 'price-table', list: '/price-table', meta: { icon: <DollarSign size={20} /> } },
+          { name: 'cash-register', list: '/cash-register', meta: { icon: <Banknote size={20} /> } },
+          { name: 'expenses', list: '/expenses', meta: { icon: <TrendingDown size={20} /> } },
         ]}
       >
         <Routes>
           <Route
             element={
               <Authenticated key="authenticated" redirectOnFail="/login">
-                <ThemedLayoutV2 Title={Logo}>
+                <ThemedLayoutV2 Title={Logo} Sider={(props) => <ThemedSiderV2 {...props} fixed />}>
                   <Outlet />
                 </ThemedLayoutV2>
               </Authenticated>
             }
           >
             <Route index element={<DashboardPage />} />
-            <Route path="/items/create" element={<ItemsCreatePage />} />
             <Route path="/items/low-stock" element={<ItemsLowStockPage />} />
-            <Route path="/items/:id/edit" element={<ItemsEditPage />} />
-            <Route path="/items/:id" element={<ItemsShowPage />} />
             <Route path="/items" element={<ItemsListPage />} />
             <Route path="*" element={<DashboardPage />} />
           </Route>

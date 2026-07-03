@@ -1,9 +1,11 @@
 import { useTable, List } from '@refinedev/antd';
 import { useDelete, useInvalidate, type CrudFilter } from '@refinedev/core';
 import { Table, Space, Tag, Button, Modal, Typography, Select, Input } from 'antd';
-import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { Pencil, Eye, Trash2 } from 'lucide-react';
 import { CsvImportModal } from '../../components/csv-import-modal';
+import { ItemFormDrawer } from '../../components/item-form-drawer';
+import { ItemShowDrawer } from '../../components/item-show-drawer';
 
 const { Text } = Typography;
 
@@ -39,8 +41,10 @@ function formatCurrency(value?: number | null): string {
 }
 
 export const ItemsListPage = () => {
-  const navigate = useNavigate();
   const [csvModalOpen, setCsvModalOpen] = useState(false);
+  const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [showId, setShowId] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
   const { mutate: deleteMutate } = useDelete();
   const invalidate = useInvalidate();
@@ -75,9 +79,11 @@ export const ItemsListPage = () => {
   return (
     <>
       <List
-        headerButtons={({ defaultButtons }) => (
+        headerButtons={() => (
           <>
-            {defaultButtons}
+            <Button type="primary" onClick={() => setCreateDrawerOpen(true)}>
+              Criar
+            </Button>
             <Button onClick={() => setCsvModalOpen(true)}>Importar CSV</Button>
           </>
         )}
@@ -172,23 +178,57 @@ export const ItemsListPage = () => {
           <Table.Column
             title="Ações"
             key="actions"
-            width={210}
+            width={140}
             render={(_, record: IItem) => (
               <Space>
-                <Button size="small" type="link" onClick={() => navigate(`/items/${record.id}/edit`)}>
-                  Editar
+                <Button
+                  size="small"
+                  type="link"
+                  title="Editar"
+                  onClick={() => setEditingId(record.id)}
+                >
+                  <Pencil size={16} />
                 </Button>
-                <Button size="small" type="link" onClick={() => navigate(`/items/${record.id}`)}>
-                  Visualizar
+                <Button
+                  size="small"
+                  type="link"
+                  title="Visualizar"
+                  onClick={() => setShowId(record.id)}
+                >
+                  <Eye size={16} />
                 </Button>
-                <Button size="small" type="link" danger onClick={() => handleDelete(record)}>
-                  Excluir
+                <Button
+                  size="small"
+                  type="link"
+                  danger
+                  title="Excluir"
+                  onClick={() => handleDelete(record)}
+                >
+                  <Trash2 size={16} />
                 </Button>
               </Space>
             )}
           />
         </Table>
       </List>
+      <ItemFormDrawer
+        mode="create"
+        open={createDrawerOpen}
+        onClose={() => setCreateDrawerOpen(false)}
+        onSuccess={() => invalidate({ resource: 'items', invalidates: ['list'] })}
+      />
+      <ItemFormDrawer
+        mode="edit"
+        recordId={editingId}
+        open={editingId !== null}
+        onClose={() => setEditingId(null)}
+        onSuccess={() => invalidate({ resource: 'items', invalidates: ['list'] })}
+      />
+      <ItemShowDrawer
+        recordId={showId}
+        open={showId !== null}
+        onClose={() => setShowId(null)}
+      />
       <CsvImportModal
         open={csvModalOpen}
         onClose={() => setCsvModalOpen(false)}

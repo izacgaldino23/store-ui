@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, Button, Alert, List, Typography, Upload, message } from 'antd';
+import { Modal, Button, Alert, List, Typography, Upload } from 'antd';
 import { UploadOutlined, InboxOutlined } from '@ant-design/icons';
 import apiClient from '../providers/rest-client';
 
