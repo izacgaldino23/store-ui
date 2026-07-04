@@ -19,6 +19,9 @@ import { LoginPage } from './pages/login';
 import { RegisterPage } from './pages/register';
 import { ItemsListPage } from './pages/items/list';
 import { ItemsLowStockPage } from './pages/items/low-stock';
+import { OrdersListPage } from './pages/orders/list';
+import { OrdersCreatePage } from './pages/orders/create';
+import { OrdersShowPage } from './pages/orders/show';
 
 function App() {
   return (
@@ -55,6 +58,9 @@ function App() {
             <Route index element={<DashboardPage />} />
             <Route path="/items/low-stock" element={<ItemsLowStockPage />} />
             <Route path="/items" element={<ItemsListPage />} />
+            <Route path="/orders" element={<OrdersListPage />} />
+            <Route path="/orders/create" element={<OrdersCreatePage />} />
+            <Route path="/orders/:id" element={<OrdersShowPage />} />
             <Route path="*" element={<DashboardPage />} />
           </Route>
           <Route
