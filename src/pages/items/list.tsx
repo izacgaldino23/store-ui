@@ -58,7 +58,7 @@ export const ItemsListPage = () => {
     const f: CrudFilter[] = [];
     if (search) f.push({ field: 'search', operator: 'contains', value: search });
     if (type) f.push({ field: 'type', operator: 'eq', value: type });
-    setFilters(f);
+    setFilters(f, 'replace');
   };
 
   const handleDelete = (record: IItem) => {
