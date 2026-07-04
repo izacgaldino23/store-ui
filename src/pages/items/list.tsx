@@ -93,8 +93,12 @@ export const ItemsListPage = () => {
             placeholder="Buscar por nome..."
             allowClear
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            onSearch={(value) => applyFilters(value, typeFilter)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSearchText(val);
+              if (!val) applyFilters(undefined, typeFilter);
+            }}
+            onSearch={(value) => applyFilters(value || undefined, typeFilter)}
             style={{ width: 250 }}
           />
           <Select
