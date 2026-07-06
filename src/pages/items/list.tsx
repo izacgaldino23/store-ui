@@ -1,6 +1,7 @@
 import { useTable, List } from '@refinedev/antd';
 import { useDelete, useInvalidate, type CrudFilter } from '@refinedev/core';
-import { Table, Space, Tag, Button, Modal, Typography, Select, Input } from 'antd';
+import { Table, Space, Tag, Button, Modal, Typography, Select, Input, message } from 'antd';
+import apiClient from '../../providers/rest-client';
 import { useState } from 'react';
 import { Pencil, Eye, Trash2 } from 'lucide-react';
 import { CsvImportModal } from '../../components/csv-import-modal';
@@ -45,6 +46,8 @@ export const ItemsListPage = () => {
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showId, setShowId] = useState<string | null>(null);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [batchDeleteModalOpen, setBatchDeleteModalOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
   const { mutate: deleteMutate } = useDelete();
   const invalidate = useInvalidate();
@@ -74,6 +77,27 @@ export const ItemsListPage = () => {
     });
   };
 
+  const handleBatchDelete = () => {
+    if (selectedRowKeys.length === 0) return;
+    setBatchDeleteModalOpen(true);
+  };
+
+  const confirmBatchDelete = async () => {
+    try {
+      const count = selectedRowKeys.length;
+      await apiClient.delete('/catalog/items/batch', {
+        data: { ids: selectedRowKeys },
+      });
+      setSelectedRowKeys([]);
+      setBatchDeleteModalOpen(false);
+      invalidate({ resource: 'items', invalidates: ['list'] });
+      message.success(`${count} item(ns) excluído(s) com sucesso.`);
+    } catch {
+      message.error('Erro ao excluir um ou mais itens.');
+      setBatchDeleteModalOpen(false);
+    }
+  };
+
   const [searchText, setSearchText] = useState('');
 
   return (
@@ -81,6 +105,11 @@ export const ItemsListPage = () => {
       <List
         headerButtons={() => (
           <>
+            {selectedRowKeys.length > 0 && (
+              <Button danger onClick={handleBatchDelete}>
+                Excluir selecionados ({selectedRowKeys.length})
+              </Button>
+            )}
             <Button type="primary" onClick={() => setCreateDrawerOpen(true)}>
               Criar
             </Button>
@@ -120,6 +149,10 @@ export const ItemsListPage = () => {
         <Table
           {...tableProps}
           rowKey="id"
+          rowSelection={{
+            selectedRowKeys,
+            onChange: (keys) => setSelectedRowKeys(keys),
+          }}
           pagination={{
             ...tableProps.pagination,
             showSizeChanger: true,
@@ -238,6 +271,17 @@ export const ItemsListPage = () => {
         onClose={() => setCsvModalOpen(false)}
         onSuccess={() => invalidate({ resource: 'items', invalidates: ['list'] })}
       />
+      <Modal
+        title="Excluir itens selecionados"
+        open={batchDeleteModalOpen}
+        onOk={confirmBatchDelete}
+        onCancel={() => setBatchDeleteModalOpen(false)}
+        okText="Excluir"
+        cancelText="Cancelar"
+        okButtonProps={{ danger: true }}
+      >
+        <p>Tem certeza que deseja excluir {selectedRowKeys.length} item(ns)?</p>
+      </Modal>
     </>
   );
 };
