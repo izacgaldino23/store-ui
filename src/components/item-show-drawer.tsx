@@ -10,12 +10,14 @@ interface IItem {
   code: string;
   bar_code?: string;
   name: string;
+  display_name?: string;
   description?: string;
   cost_price: number;
   sale_price?: number;
   min_stock: number;
   unit: string;
   supplier?: string;
+  units_per_pack: number;
   active: boolean;
   current_stock?: number;
   created_at: string;
@@ -75,6 +77,9 @@ export const ItemShowDrawer = ({ recordId, open, onClose }: ItemShowDrawerProps)
         <Descriptions column={2} bordered size="small">
           <Descriptions.Item label="Código">{record.code}</Descriptions.Item>
           <Descriptions.Item label="Nome">{record.name}</Descriptions.Item>
+          {record.display_name && record.display_name !== record.name && (
+            <Descriptions.Item label="Nome (normalizado)">{record.display_name}</Descriptions.Item>
+          )}
           <Descriptions.Item label="Tipo">
             <Tag>{typeLabels[record.item_type] || record.item_type}</Tag>
           </Descriptions.Item>
@@ -97,6 +102,7 @@ export const ItemShowDrawer = ({ recordId, open, onClose }: ItemShowDrawerProps)
           </Descriptions.Item>
           <Descriptions.Item label="Estoque Mínimo">{record.min_stock}</Descriptions.Item>
           <Descriptions.Item label="Código de Barras">{record.bar_code || '-'}</Descriptions.Item>
+          <Descriptions.Item label="Un por Embalagem">{record.units_per_pack || 1}</Descriptions.Item>
           <Descriptions.Item label="Fornecedor">{record.supplier || '-'}</Descriptions.Item>
           <Descriptions.Item label="Ativo">
             {record.active ? (
