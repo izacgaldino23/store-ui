@@ -6,9 +6,8 @@ import {
   LayoutDashboard,
   Package,
   ShoppingCart,
-  DollarSign,
-  Banknote,
-  TrendingDown,
+  Tag,
+  Wallet,
 } from 'lucide-react';
 import { dataProvider } from './providers/data-provider';
 import { authProvider } from './providers/auth-provider';
@@ -18,7 +17,6 @@ import { DashboardPage } from './pages/dashboard';
 import { LoginPage } from './pages/login';
 import { RegisterPage } from './pages/register';
 import { ItemsListPage } from './pages/items/list';
-import { ItemsLowStockPage } from './pages/items/low-stock';
 import { OrdersListPage } from './pages/orders/list';
 import { OrdersCreatePage } from './pages/orders/create';
 import { OrdersShowPage } from './pages/orders/show';
@@ -41,52 +39,65 @@ function App() {
         notificationProvider={useNotificationProvider}
         i18nProvider={i18nProvider}
         resources={[
-          { name: 'dashboard', list: '/', meta: { icon: <LayoutDashboard size={20} /> } },
+          {
+            name: 'dashboard',
+            list: '/',
+            meta: { icon: <LayoutDashboard size={20} />, label: 'Visão Geral' },
+          },
+          {
+            name: 'catalog',
+            meta: { icon: <Package size={20} />, label: 'Catálogo' },
+          },
           {
             name: 'items',
             list: '/items',
-            meta: { icon: <Package size={20} />, canDelete: true },
+            meta: { parent: 'catalog', label: 'Itens', canDelete: true },
           },
-          { name: 'orders', list: '/orders', meta: { icon: <ShoppingCart size={20} /> } },
+
+          {
+            name: 'orders',
+            list: '/orders',
+            meta: { icon: <ShoppingCart size={20} />, label: 'Pedidos' },
+          },
           {
             name: 'pricing',
-            meta: { icon: <DollarSign size={20} />, label: 'Precificação' },
+            meta: { icon: <Tag size={20} />, label: 'Preços' },
           },
           {
             name: 'price-table',
             list: '/pricing/table',
             create: '/pricing/table/create',
             edit: '/pricing/table/:id/edit',
-            meta: { parentName: 'pricing', label: 'Tabela de Preços' },
+            meta: { parent: 'pricing', label: 'Tabela de Preços' },
           },
           {
             name: 'calculator',
             list: '/pricing/calculator',
-            meta: { parentName: 'pricing', label: 'Calculadora de Margem' },
+            meta: { parent: 'pricing', label: 'Calculadora de Margem' },
           },
           {
-            name: 'cash-flow',
-            meta: { icon: <Banknote size={20} />, label: 'Fluxo de Caixa' },
+            name: 'cash',
+            meta: { icon: <Wallet size={20} />, label: 'Caixa' },
           },
           {
             name: 'cash-register',
             list: '/cash-flow/current',
-            meta: { parentName: 'cash-flow', label: 'Caixa Atual' },
+            meta: { parent: 'cash', label: 'Caixa Atual' },
           },
           {
             name: 'daily-report',
             list: '/cash-flow/daily-report',
-            meta: { parentName: 'cash-flow', label: 'Relatório Diário' },
+            meta: { parent: 'cash', label: 'Relatório Diário' },
           },
           {
             name: 'cash-flow-history',
             list: '/cash-flow/history',
-            meta: { parentName: 'cash-flow', label: 'Histórico' },
+            meta: { parent: 'cash', label: 'Histórico' },
           },
           {
             name: 'expenses',
             list: '/cash-flow/expenses',
-            meta: { parentName: 'cash-flow', label: 'Despesas' },
+            meta: { parent: 'cash', label: 'Despesas' },
           },
         ]}
       >
@@ -101,7 +112,6 @@ function App() {
             }
           >
             <Route index element={<DashboardPage />} />
-            <Route path="/items/low-stock" element={<ItemsLowStockPage />} />
             <Route path="/items" element={<ItemsListPage />} />
             <Route path="/orders" element={<OrdersListPage />} />
             <Route path="/orders/create" element={<OrdersCreatePage />} />
