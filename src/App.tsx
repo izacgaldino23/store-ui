@@ -26,6 +26,10 @@ import { PriceTableListPage } from './pages/price-table/list';
 import { PriceTableCreatePage } from './pages/price-table/create';
 import { PriceTableEditPage } from './pages/price-table/edit';
 import { CalculatorPage } from './pages/pricing/calculator';
+import { CashFlowCurrentPage } from './pages/cash-flow/current';
+import { DailyReportPage } from './pages/cash-flow/daily-report';
+import { CashFlowHistoryPage } from './pages/cash-flow/history';
+import { ExpensesPage } from './pages/cash-flow/expenses';
 
 function App() {
   return (
@@ -60,8 +64,30 @@ function App() {
             list: '/pricing/calculator',
             meta: { parentName: 'pricing', label: 'Calculadora de Margem' },
           },
-          { name: 'cash-register', list: '/cash-register', meta: { icon: <Banknote size={20} /> } },
-          { name: 'expenses', list: '/expenses', meta: { icon: <TrendingDown size={20} /> } },
+          {
+            name: 'cash-flow',
+            meta: { icon: <Banknote size={20} />, label: 'Fluxo de Caixa' },
+          },
+          {
+            name: 'cash-register',
+            list: '/cash-flow/current',
+            meta: { parentName: 'cash-flow', label: 'Caixa Atual' },
+          },
+          {
+            name: 'daily-report',
+            list: '/cash-flow/daily-report',
+            meta: { parentName: 'cash-flow', label: 'Relatório Diário' },
+          },
+          {
+            name: 'cash-flow-history',
+            list: '/cash-flow/history',
+            meta: { parentName: 'cash-flow', label: 'Histórico' },
+          },
+          {
+            name: 'expenses',
+            list: '/cash-flow/expenses',
+            meta: { parentName: 'cash-flow', label: 'Despesas' },
+          },
         ]}
       >
         <Routes>
@@ -84,6 +110,10 @@ function App() {
             <Route path="/pricing/table/create" element={<PriceTableCreatePage />} />
             <Route path="/pricing/table/:id/edit" element={<PriceTableEditPage />} />
             <Route path="/pricing/calculator" element={<CalculatorPage />} />
+            <Route path="/cash-flow/current" element={<CashFlowCurrentPage />} />
+            <Route path="/cash-flow/daily-report" element={<DailyReportPage />} />
+            <Route path="/cash-flow/history" element={<CashFlowHistoryPage />} />
+            <Route path="/cash-flow/expenses" element={<ExpensesPage />} />
             <Route path="*" element={<DashboardPage />} />
           </Route>
           <Route
