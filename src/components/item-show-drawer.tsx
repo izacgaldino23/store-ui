@@ -76,9 +76,9 @@ export const ItemShowDrawer = ({ recordId, open, onClose }: ItemShowDrawerProps)
       ) : record ? (
         <Descriptions column={2} bordered size="small">
           <Descriptions.Item label="Código">{record.code}</Descriptions.Item>
-          <Descriptions.Item label="Nome">{record.name}</Descriptions.Item>
-          {record.display_name && record.display_name !== record.name && (
-            <Descriptions.Item label="Nome (normalizado)">{record.display_name}</Descriptions.Item>
+          <Descriptions.Item label="Nome">{record.display_name || record.name}</Descriptions.Item>
+          {record.name && record.name !== record.display_name && (
+            <Descriptions.Item label="Descrição (original)">{record.name}</Descriptions.Item>
           )}
           <Descriptions.Item label="Tipo">
             <Tag>{typeLabels[record.item_type] || record.item_type}</Tag>

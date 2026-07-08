@@ -15,6 +15,7 @@ interface IItem {
   item_type: 'revenda' | 'insumo' | 'servico';
   code: string;
   name: string;
+  display_name?: string;
   sale_price?: number;
   current_stock?: number;
   min_stock: number;
@@ -52,12 +53,13 @@ export const ItemsListPage = () => {
   const { mutate: deleteMutate } = useDelete();
   const invalidate = useInvalidate();
 
-  const { tableProps, setFilters } = useTable<IItem>({
+  const { tableProps, setFilters, setCurrent } = useTable<IItem>({
     resource: 'items',
     pagination: { current: 1, pageSize: 10, mode: 'server' },
   });
 
   const applyFilters = (search?: string, type?: string) => {
+    setCurrent(1);
     const f: CrudFilter[] = [];
     if (search) f.push({ field: 'search', operator: 'contains', value: search });
     if (type) f.push({ field: 'type', operator: 'eq', value: type });
@@ -160,7 +162,11 @@ export const ItemsListPage = () => {
           }}
         >
           <Table.Column dataIndex="code" title="Código" width={110} />
-          <Table.Column dataIndex="name" title="Nome" ellipsis />
+          <Table.Column
+            title="Nome"
+            ellipsis
+            render={(_, record: IItem) => record.display_name || record.name}
+          />
           <Table.Column
             dataIndex="item_type"
             title="Tipo"
