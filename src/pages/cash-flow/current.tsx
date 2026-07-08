@@ -66,8 +66,8 @@ export const CashFlowCurrentPage = () => {
   }, [fetchCurrent]);
 
   const handleOpen = async () => {
-    if (openBalance <= 0) {
-      message.warning('Informe o saldo inicial.');
+    if (openBalance < 0) {
+      message.warning('Saldo inicial não pode ser negativo.');
       return;
     }
     setSubmitting(true);
