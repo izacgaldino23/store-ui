@@ -45,6 +45,11 @@ apiClient.interceptors.response.use(
       }
     }
 
+    if (!error.response) {
+      error.message = 'Servidor offline. Verifique sua conexão.';
+      return Promise.reject(error);
+    }
+
     const data = error.response?.data;
     const code = data?.code;
     if (data?.message) {

@@ -117,6 +117,7 @@ export const OrdersListPage = () => {
       <Table
         {...tableProps}
         rowKey="id"
+        scroll={{ x: 'max-content' }}
         pagination={{
           ...tableProps.pagination,
           showSizeChanger: true,

@@ -81,33 +81,44 @@ export const CashFlowCurrentPage = () => {
       setOpenBalance(0);
       setOpenNotes('');
       fetchCurrent();
-    } catch {
-      message.error('Erro ao abrir caixa.');
+    } catch (err: unknown) {
+      const axiosErr = err as { message?: string };
+      message.error(axiosErr?.message || 'Erro ao abrir caixa.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleClose = async () => {
+  const handleClose = () => {
     if (closeBalance < 0) {
       message.warning('Informe o saldo de fechamento.');
       return;
     }
-    setSubmitting(true);
-    try {
-      await apiClient.post('/cash-register/close', {
-        closing_balance: closeBalance,
-        notes: closeNotes || undefined,
-      });
-      message.success('Caixa fechado com sucesso!');
-      setCloseModal(false);
-      setCloseNotes('');
-      fetchCurrent();
-    } catch {
-      message.error('Erro ao fechar caixa.');
-    } finally {
-      setSubmitting(false);
-    }
+    Modal.confirm({
+      title: 'Confirmar fechamento de caixa',
+      content: `Tem certeza que deseja fechar o caixa com saldo final de ${formatCurrency(closeBalance)}?`,
+      okText: 'Fechar',
+      cancelText: 'Cancelar',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        setSubmitting(true);
+        try {
+          await apiClient.post('/cash-register/close', {
+            closing_balance: closeBalance,
+            notes: closeNotes || undefined,
+          });
+          message.success('Caixa fechado com sucesso!');
+          setCloseModal(false);
+          setCloseNotes('');
+          fetchCurrent();
+        } catch (err: unknown) {
+          const axiosErr = err as { message?: string };
+          message.error(axiosErr?.message || 'Erro ao fechar caixa.');
+        } finally {
+          setSubmitting(false);
+        }
+      },
+    });
   };
 
   return (

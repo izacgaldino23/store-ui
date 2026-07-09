@@ -9,10 +9,12 @@ import {
   Tag,
   Wallet,
 } from 'lucide-react';
+import { ConfigProvider } from 'antd';
 import { dataProvider } from './providers/data-provider';
 import { authProvider } from './providers/auth-provider';
 import { i18nProvider } from './i18n';
 import { Logo } from './components/logo';
+import { themeConfig, renderEmpty } from './theme';
 import { DashboardPage } from './pages/dashboard';
 import { LoginPage } from './pages/login';
 import { RegisterPage } from './pages/register';
@@ -32,6 +34,7 @@ import { ExpensesPage } from './pages/cash-flow/expenses';
 function App() {
   return (
     <BrowserRouter>
+      <ConfigProvider theme={themeConfig} renderEmpty={renderEmpty}>
       <Refine
         dataProvider={dataProvider}
         authProvider={authProvider}
@@ -144,6 +147,7 @@ function App() {
           />
         </Routes>
       </Refine>
+      </ConfigProvider>
     </BrowserRouter>
   );
 }

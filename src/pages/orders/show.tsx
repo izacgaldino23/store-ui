@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOne } from '@refinedev/core';
-import { Card, Descriptions, Table, Tag, Button, Space, Typography, Spin, message } from 'antd';
+import { Card, Descriptions, Table, Tag, Button, Space, Typography, Spin, message, Modal } from 'antd';
 import { ArrowLeft } from 'lucide-react';
 import apiClient from '../../providers/rest-client';
 
@@ -91,13 +91,29 @@ export const OrdersShowPage = () => {
 
   const order = data?.data;
 
+  const confirmStatusChange = (newStatus: string) => {
+    const labels: Record<string, string> = {
+      em_producao: 'Iniciar Produção',
+      pronto: 'Marcar como Pronto',
+      entregue: 'Confirmar Entrega',
+    };
+    Modal.confirm({
+      title: 'Confirmar alteração de status',
+      content: `Tem certeza que deseja alterar o status para "${statusLabels[newStatus]}"?`,
+      okText: labels[newStatus] || 'Confirmar',
+      cancelText: 'Cancelar',
+      onOk: () => handleUpdateStatus(newStatus),
+    });
+  };
+
   const handleUpdateStatus = async (newStatus: string) => {
     try {
       await apiClient.put(`/orders/${id}/status`, { status: newStatus });
       message.success('Status atualizado com sucesso');
       refetch();
-    } catch {
-      message.error('Erro ao atualizar status');
+    } catch (err: unknown) {
+      const axiosErr = err as { message?: string };
+      message.error(axiosErr?.message || 'Erro ao atualizar status');
     }
   };
 
@@ -131,17 +147,17 @@ export const OrdersShowPage = () => {
         {nextStatuses.length > 0 && (
           <Space style={{ marginTop: 16 }}>
             {nextStatuses.includes('em_producao') && (
-              <Button type="primary" onClick={() => handleUpdateStatus('em_producao')}>
+              <Button type="primary" onClick={() => confirmStatusChange('em_producao')}>
                 Iniciar Produção
               </Button>
             )}
             {nextStatuses.includes('pronto') && (
-              <Button type="primary" onClick={() => handleUpdateStatus('pronto')}>
+              <Button type="primary" onClick={() => confirmStatusChange('pronto')}>
                 Marcar como Pronto
               </Button>
             )}
             {nextStatuses.includes('entregue') && (
-              <Button type="primary" onClick={() => handleUpdateStatus('entregue')}>
+              <Button type="primary" onClick={() => confirmStatusChange('entregue')}>
                 Confirmar Entrega
               </Button>
             )}
@@ -150,7 +166,7 @@ export const OrdersShowPage = () => {
       </Card>
 
       <Title level={5}>Itens</Title>
-      <Table dataSource={order.items} rowKey="id" pagination={false} style={{ marginBottom: 16 }}>
+      <Table dataSource={order.items} rowKey="id" pagination={false} scroll={{ x: 'max-content' }} style={{ marginBottom: 16 }}>
         <Table.Column dataIndex="item_name" title="Item" />
         <Table.Column
           dataIndex="item_type"
@@ -178,7 +194,7 @@ export const OrdersShowPage = () => {
       </Table>
 
       <Title level={5}>Pagamentos</Title>
-      <Table dataSource={order.payments} rowKey="id" pagination={false}>
+      <Table dataSource={order.payments} rowKey="id" pagination={false} scroll={{ x: 'max-content' }}>
         <Table.Column
           dataIndex="method"
           title="Método"

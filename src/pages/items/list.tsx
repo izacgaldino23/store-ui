@@ -101,8 +101,9 @@ export const ItemsListPage = () => {
       setBatchDeleteModalOpen(false);
       invalidate({ resource: 'items', invalidates: ['list'] });
       message.success(`${count} item(ns) excluído(s) com sucesso.`);
-    } catch {
-      message.error('Erro ao excluir um ou mais itens.');
+    } catch (err: unknown) {
+      const axiosErr = err as { message?: string };
+      message.error(axiosErr?.message || 'Erro ao excluir um ou mais itens.');
       setBatchDeleteModalOpen(false);
     }
   };
@@ -161,6 +162,7 @@ export const ItemsListPage = () => {
             rowKey="id"
             loading={lowStockLoading}
             pagination={false}
+            scroll={{ x: 'max-content' }}
           >
             <Table.Column dataIndex="code" title="Código" width={110} />
             <Table.Column
@@ -249,6 +251,7 @@ export const ItemsListPage = () => {
             <Table
               {...tableProps}
               rowKey="id"
+              scroll={{ x: 'max-content' }}
               rowSelection={{
                 selectedRowKeys,
                 onChange: (keys) => setSelectedRowKeys(keys),

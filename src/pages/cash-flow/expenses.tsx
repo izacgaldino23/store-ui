@@ -93,8 +93,9 @@ export const ExpensesPage = () => {
       setPaymentMethod('dinheiro');
       setCategory('outros');
       fetchExpenses(categoryFilter);
-    } catch {
-      message.error('Erro ao registrar despesa.');
+    } catch (err: unknown) {
+      const axiosErr = err as { message?: string };
+      message.error(axiosErr?.message || 'Erro ao registrar despesa.');
     } finally {
       setSubmitting(false);
     }
@@ -134,6 +135,7 @@ export const ExpensesPage = () => {
           dataSource={expenses}
           rowKey="id"
           loading={loading}
+          scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 10, showTotal: (total) => `Total: ${total} despesa(s)` }}
         >
           <Table.Column dataIndex="description" title="Descrição" ellipsis />

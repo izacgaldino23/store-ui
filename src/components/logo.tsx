@@ -23,7 +23,7 @@ export const Logo: React.FC<LogoProps> = ({ collapsed }) => {
       {!collapsed && (
         <span
           style={{
-            color: '#fff',
+            color: '#E879A8',
             fontWeight: 'bold',
             fontSize: 18,
             whiteSpace: 'nowrap',
