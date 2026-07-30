@@ -14,7 +14,9 @@ Frontend administrativo para a Gráfica Miau, construído com Refine + Ant Desig
 
 ## API
 
-Backend Go Fiber em `http://localhost:8080`. Todos os endpoints (exceto auth) são protegidos via JWT Bearer token.
+Backend Go Fiber. A URL base é configurável via variável de ambiente `VITE_API_URL` (cópia `.env.example` → `.env`).  
+Padrão: `http://localhost:8080`.  
+Todos os endpoints (exceto auth) são protegidos via JWT Bearer token.
 
 ## Fases
 
