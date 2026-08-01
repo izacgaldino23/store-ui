@@ -122,7 +122,7 @@ export const ItemFormDrawer = ({ mode, recordId, open, onClose, onSuccess }: Ite
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="units_per_pack" label="Un por Embalagem">
+              <Form.Item name="units_per_pack" label="Qtd. por Embalagem">
                 <InputNumber min={1} style={{ width: '100%' }} />
               </Form.Item>
             </Col>

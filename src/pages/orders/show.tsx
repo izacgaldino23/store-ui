@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOne } from '@refinedev/core';
 import { Card, Descriptions, Table, Tag, Button, Space, Typography, Spin, message, Modal, Input } from 'antd';
@@ -34,6 +35,10 @@ export const OrdersShowPage = () => {
 
   const order = data?.data;
 
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [canceling, setCanceling] = useState(false);
+
   const confirmStatusChange = (newStatus: string) => {
     Modal.confirm({
       title: 'Confirmar alteração de status',
@@ -55,39 +60,23 @@ export const OrdersShowPage = () => {
     }
   };
 
-  const confirmCancel = () => {
-    let reason = '';
-    Modal.confirm({
-      title: 'Cancelar pedido',
-      content: (
-        <div>
-          <Typography.Paragraph type="secondary">
-            Tem certeza que deseja cancelar este pedido?
-          </Typography.Paragraph>
-          <Input.TextArea
-            placeholder="Motivo do cancelamento (opcional)"
-            rows={2}
-            onChange={(e) => {
-              reason = e.target.value;
-            }}
-          />
-        </div>
-      ),
-      okText: 'Cancelar Pedido',
-      okButtonProps: { danger: true },
-      cancelText: 'Voltar',
-      onOk: () => handleCancelOrder(reason),
-    });
+  const openCancelModal = () => {
+    setCancelReason('');
+    setCancelOpen(true);
   };
 
   const handleCancelOrder = async (reason?: string) => {
+    setCanceling(true);
     try {
       await apiClient.post(`/orders/${id}/cancel`, { reason: reason || undefined });
       message.success('Pedido cancelado com sucesso');
+      setCancelOpen(false);
       refetch();
     } catch (err: unknown) {
       const axiosErr = err as { message?: string };
       message.error(axiosErr?.message || 'Erro ao cancelar pedido');
+    } finally {
+      setCanceling(false);
     }
   };
 
@@ -157,7 +146,7 @@ export const OrdersShowPage = () => {
             </Button>
           )}
           {canCancel && (
-            <Button danger icon={<XCircle size={16} />} onClick={confirmCancel}>
+            <Button danger icon={<XCircle size={16} />} onClick={openCancelModal}>
               Cancelar Pedido
             </Button>
           )}
@@ -208,6 +197,27 @@ export const OrdersShowPage = () => {
           render={(val: number) => formatCurrency(val)}
         />
       </Table>
+
+      <Modal
+        title="Cancelar pedido"
+        open={cancelOpen}
+        onOk={() => handleCancelOrder(cancelReason)}
+        onCancel={() => setCancelOpen(false)}
+        okText="Cancelar Pedido"
+        okButtonProps={{ danger: true, loading: canceling }}
+        cancelText="Voltar"
+        confirmLoading={canceling}
+      >
+        <Typography.Paragraph type="secondary">
+          Tem certeza que deseja cancelar este pedido?
+        </Typography.Paragraph>
+        <Input.TextArea
+          placeholder="Motivo do cancelamento (opcional)"
+          rows={2}
+          value={cancelReason}
+          onChange={(e) => setCancelReason(e.target.value)}
+        />
+      </Modal>
     </div>
   );
 };

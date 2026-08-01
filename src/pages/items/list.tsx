@@ -1,9 +1,9 @@
 import { useTable, List } from '@refinedev/antd';
 import { useDelete, useInvalidate, useList, type CrudFilter } from '@refinedev/core';
-import { Table, Space, Tag, Button, Modal, Typography, Select, Input, message } from 'antd';
+import { Table, Space, Tag, Button, Modal, Typography, Select, Input, InputNumber, Form, message } from 'antd';
 import apiClient from '../../providers/rest-client';
 import { useState } from 'react';
-import { Pencil, Eye, Trash2 } from 'lucide-react';
+import { Pencil, Eye, Trash2, Boxes } from 'lucide-react';
 import { CsvImportModal } from '../../components/csv-import-modal';
 import { ItemFormDrawer } from '../../components/item-form-drawer';
 import { ItemShowDrawer } from '../../components/item-show-drawer';
@@ -51,6 +51,12 @@ export const ItemsListPage = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [batchDeleteModalOpen, setBatchDeleteModalOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
+  const [adjustModalOpen, setAdjustModalOpen] = useState(false);
+  const [adjustStockId, setAdjustStockId] = useState<string | null>(null);
+  const [adjustCurrentStock, setAdjustCurrentStock] = useState(0);
+  const [adjustQuantity, setAdjustQuantity] = useState<number | null>(null);
+  const [adjustReason, setAdjustReason] = useState('');
+  const [adjusting, setAdjusting] = useState(false);
   const { mutate: deleteMutate } = useDelete();
   const invalidate = useInvalidate();
 
@@ -84,6 +90,33 @@ export const ItemsListPage = () => {
         deleteMutate({ resource: 'items', id: record.id });
       },
     });
+  };
+
+  const openAdjustModal = (record: IItem) => {
+    setAdjustStockId(record.id);
+    setAdjustCurrentStock(record.current_stock ?? 0);
+    setAdjustQuantity(null);
+    setAdjustReason('');
+    setAdjustModalOpen(true);
+  };
+
+  const handleAdjustStock = async () => {
+    if (!adjustStockId || adjustQuantity == null || adjustQuantity === 0) return;
+    setAdjusting(true);
+    try {
+      await apiClient.post(`/catalog/items/${adjustStockId}/adjust-stock`, {
+        quantity: adjustQuantity,
+        reason: adjustReason || undefined,
+      });
+      setAdjustModalOpen(false);
+      invalidate({ resource: 'items', invalidates: ['list'] });
+      message.success('Estoque ajustado com sucesso');
+    } catch (err: unknown) {
+      const axiosErr = err as { message?: string };
+      message.error(axiosErr?.message || 'Erro ao ajustar estoque');
+    } finally {
+      setAdjusting(false);
+    }
   };
 
   const handleBatchDelete = () => {
@@ -202,7 +235,7 @@ export const ItemsListPage = () => {
             <Table.Column
               title="Ações"
               key="actions"
-              width={140}
+              width={180}
               render={(_, record: IItem) => (
                 <Space>
                   <Button
@@ -213,6 +246,16 @@ export const ItemsListPage = () => {
                   >
                     <Eye size={16} />
                   </Button>
+                  {record.item_type !== 'servico' && (
+                    <Button
+                      size="small"
+                      type="link"
+                      title="Ajustar Estoque"
+                      onClick={() => openAdjustModal(record)}
+                    >
+                      <Boxes size={16} />
+                    </Button>
+                  )}
                 </Space>
               )}
             />
@@ -322,7 +365,7 @@ export const ItemsListPage = () => {
               <Table.Column
                 title="Ações"
                 key="actions"
-                width={140}
+                width={180}
                 render={(_, record: IItem) => (
                   <Space>
                     <Button
@@ -341,6 +384,16 @@ export const ItemsListPage = () => {
                     >
                       <Eye size={16} />
                     </Button>
+                    {record.item_type !== 'servico' && (
+                      <Button
+                        size="small"
+                        type="link"
+                        title="Ajustar Estoque"
+                        onClick={() => openAdjustModal(record)}
+                      >
+                        <Boxes size={16} />
+                      </Button>
+                    )}
                     <Button
                       size="small"
                       type="link"
@@ -390,6 +443,42 @@ export const ItemsListPage = () => {
         okButtonProps={{ danger: true }}
       >
         <p>Tem certeza que deseja excluir {selectedRowKeys.length} item(ns)?</p>
+      </Modal>
+      <Modal
+        title="Ajustar Estoque"
+        open={adjustModalOpen}
+        onOk={handleAdjustStock}
+        onCancel={() => setAdjustModalOpen(false)}
+        okText="Aplicar"
+        cancelText="Voltar"
+        confirmLoading={adjusting}
+        okButtonProps={{ disabled: adjustQuantity == null || adjustQuantity === 0 }}
+      >
+        <Typography.Paragraph type="secondary">
+          Estoque atual: <Text strong>{adjustCurrentStock}</Text>
+        </Typography.Paragraph>
+        <Form layout="vertical">
+          <Form.Item
+            label="Quantidade (delta)"
+            tooltip="Valor positivo soma ao estoque; negativo subtrai."
+            required
+          >
+            <InputNumber
+              autoFocus
+              style={{ width: '100%' }}
+              placeholder="Ex: -3 ou 10"
+              value={adjustQuantity}
+              onChange={(value) => setAdjustQuantity(value)}
+            />
+          </Form.Item>
+          <Form.Item label="Motivo (opcional)">
+            <Input
+              placeholder="Ex: conferência de inventário"
+              value={adjustReason}
+              onChange={(e) => setAdjustReason(e.target.value)}
+            />
+          </Form.Item>
+        </Form>
       </Modal>
     </>
   );

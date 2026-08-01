@@ -102,7 +102,7 @@ export const ItemShowDrawer = ({ recordId, open, onClose }: ItemShowDrawerProps)
           </Descriptions.Item>
           <Descriptions.Item label="Estoque Mínimo">{record.min_stock}</Descriptions.Item>
           <Descriptions.Item label="Código de Barras">{record.bar_code || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Un por Embalagem">{record.units_per_pack || 1}</Descriptions.Item>
+          <Descriptions.Item label="Qtd. por Embalagem">{record.units_per_pack || 1}</Descriptions.Item>
           <Descriptions.Item label="Fornecedor">{record.supplier || '-'}</Descriptions.Item>
           <Descriptions.Item label="Ativo">
             {record.active ? (
