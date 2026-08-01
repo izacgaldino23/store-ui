@@ -50,6 +50,7 @@ Módulo de vendas rápido (PDV). Criar pedidos com múltiplos itens e formas de 
 - [x] **3.6** Cancelamento de pedido:
   - Modal de confirmação com motivo opcional
   - `POST /orders/:id/cancel`; exibe motivo/data no show quando cancelado
+  - Usa `<Modal>` controlado (estado React) com `confirmLoading` — garante que o endpoint é chamado (corrigido bug onde o `Modal.confirm` estático não disparava a requisição)
 
 ## Componentes compartilhados
 

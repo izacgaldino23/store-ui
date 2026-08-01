@@ -55,13 +55,22 @@ CRUD completo de itens do catálogo (revenda, insumo, serviço), importação vi
   - Card ou drawer com lista de itens `revenda` com `current_stock <= min_stock`
   - Acesso rápido pela sidebar ou dashboard
 
+- [x] **2.9** Ajuste manual de estoque:
+  - Botão "Ajustar Estoque" na coluna de ações da listagem (Todos e Estoque Baixo), oculto para itens `servico`
+  - Modal com: estoque atual, campo de quantidade (delta, aceita positivo e negativo) e motivo opcional
+  - Chama `POST /api/catalog/items/:id/adjust-stock` → refetch da lista
+  - Erros mapeados: `invalid_stock_update` → "Atualização de estoque inválida."
+
+- [x] **2.10** Corrigir label "Un por Embalagem" → "Qtd. por Embalagem" no formulário e no drawer de visualização
+
 ## Critérios de aceitação
 
-- [ ] CRUD completo de itens funcional contra API
-- [ ] Filtro por tipo e busca por nome funcionando
-- [ ] Paginação funcionando
-- [ ] Importação CSV funcional (modal + upload)
-- [ ] Indicador visual de estoque baixo
-- [ ] Soft-delete com confirmação
-- [ ] Todas as mensagens em português
-- [ ] Erros da API mapeados corretamente
+- [x] CRUD completo de itens funcional contra API
+- [x] Filtro por tipo e busca por nome funcionando
+- [x] Paginação funcionando
+- [x] Importação CSV funcional (modal + upload)
+- [x] Indicador visual de estoque baixo
+- [x] Soft-delete com confirmação
+- [x] Ajuste de estoque manual (delta +/−) com motivo opcional
+- [x] Todas as mensagens em português
+- [x] Erros da API mapeados corretamente
