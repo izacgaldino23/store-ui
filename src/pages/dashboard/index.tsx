@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Col, Row, Statistic, Typography, Tag, Skeleton, Space } from 'antd';
+import { Card, Col, Row, Statistic, Typography, Skeleton } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import {
   Wallet,

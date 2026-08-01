@@ -1,15 +1,37 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, Table, Button, Input, Select, InputNumber, Space, Typography, message, Divider, Tag, Spin } from 'antd';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useOne } from '@refinedev/core';
+import {
+  Card,
+  Table,
+  Button,
+  Input,
+  Select,
+  InputNumber,
+  Space,
+  Typography,
+  message,
+  Divider,
+  Tag,
+  Spin,
+  Alert,
+} from 'antd';
 import { Plus, Minus, Trash2, ArrowLeft } from 'lucide-react';
 import apiClient from '../../providers/rest-client';
 import { formatCurrency, paymentMethodOptions } from './constants';
-import type { ICatalogItem, ICartItem, IPayment } from './types';
+import type { ICatalogItem, ICartItem, IOrder, IPayment } from './types';
 
 const { Title, Text } = Typography;
 
-export const OrdersCreatePage = () => {
+export const OrdersEditPage = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  const { data, isLoading, refetch } = useOne<IOrder>({
+    resource: 'orders',
+    id,
+  });
+  const order = data?.data;
 
   const [searchText, setSearchText] = useState('');
   const [searchResults, setSearchResults] = useState<ICatalogItem[]>([]);
@@ -18,10 +40,61 @@ export const OrdersCreatePage = () => {
   const [payments, setPayments] = useState<IPayment[]>([]);
   const [customerName, setCustomerName] = useState('');
   const [notes, setNotes] = useState('');
+  const [loadingPrices, setLoadingPrices] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const [pendingMethod, setPendingMethod] = useState<string | undefined>();
   const [pendingAmount, setPendingAmount] = useState<number>(0);
+
+  useEffect(() => {
+    if (!order) return;
+    if (order.status === 'entregue' || order.status === 'cancelado') return;
+
+    let cancelled = false;
+    setLoadingPrices(true);
+    (async () => {
+      try {
+        const items = await Promise.all(
+          order.items.map(async (item) => {
+            try {
+              const res = await apiClient.get<ICatalogItem>(`/catalog/items/${item.item_id}`);
+              return res.data;
+            } catch {
+              return null;
+            }
+          })
+        );
+        if (cancelled) return;
+        setCart(
+          order.items.map((item) => {
+            const current = items.find((i) => i?.id === item.item_id);
+            const unitPrice = current?.sale_price ?? item.unit_price;
+            return {
+              item_id: item.item_id,
+              item_name: item.item_name,
+              item_type: item.item_type,
+              quantity: item.quantity,
+              unit_price: unitPrice,
+              total_price: item.quantity * unitPrice,
+            };
+          })
+        );
+        setPayments(
+          order.payments.map((p) => ({
+            method: p.method,
+            amount: p.amount,
+          }))
+        );
+        setCustomerName(order.customer_name || '');
+        setNotes(order.notes || '');
+      } finally {
+        if (!cancelled) setLoadingPrices(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [order]);
 
   useEffect(() => {
     if (!searchText || searchText.length < 2) {
@@ -47,6 +120,9 @@ export const OrdersCreatePage = () => {
   const orderTotal = cart.reduce((sum, item) => sum + item.total_price, 0);
   const paymentTotal = payments.reduce((sum, p) => sum + p.amount, 0);
   const remaining = orderTotal - paymentTotal;
+
+  const isDraft = order?.status === 'rascunho';
+  const notEditable = order && (order.status === 'entregue' || order.status === 'cancelado');
 
   const addToCart = (item: ICatalogItem) => {
     setCart((prev) => {
@@ -104,73 +180,89 @@ export const OrdersCreatePage = () => {
     setPendingAmount(Math.max(0, Math.round(remaining * 100) / 100));
   };
 
-  const handleSaveDraft = async () => {
+  const buildPayload = () => ({
+    items: cart.map((i) => ({ item_id: i.item_id, quantity: i.quantity })),
+    payments: payments.map((p) => ({ method: p.method, amount: p.amount })),
+    customer_name: customerName || undefined,
+    notes: notes || undefined,
+  });
+
+  const paymentsCoverTotal = payments.length > 0 && Math.abs(remaining) <= 0.01;
+
+  const handleSave = async () => {
     if (cart.length === 0) {
       message.warning('Adicione pelo menos um item ao pedido.');
       return;
     }
-
-    setSubmitting(true);
-    try {
-      const payload = {
-        items: cart.map((i) => ({ item_id: i.item_id, quantity: i.quantity })),
-        payments: payments.map((p) => ({ method: p.method, amount: p.amount })),
-        customer_name: customerName || undefined,
-        notes: notes || undefined,
-        status: 'rascunho',
-      };
-      await apiClient.post('/orders', payload);
-      message.success('Rascunho salvo com sucesso!');
-      navigate('/orders');
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      message.error(axiosErr?.response?.data?.message || 'Erro ao salvar rascunho.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (cart.length === 0) {
-      message.warning('Adicione pelo menos um item ao pedido.');
-      return;
-    }
-    if (payments.length === 0) {
-      message.warning('Adicione pelo menos uma forma de pagamento.');
-      return;
-    }
-    if (Math.abs(remaining) > 0.01) {
+    if (!isDraft && !paymentsCoverTotal) {
       message.warning('O total dos pagamentos deve ser igual ao total do pedido.');
       return;
     }
 
     setSubmitting(true);
     try {
-      const payload = {
-        items: cart.map((i) => ({ item_id: i.item_id, quantity: i.quantity })),
-        payments: payments.map((p) => ({ method: p.method, amount: p.amount })),
-        customer_name: customerName || undefined,
-        notes: notes || undefined,
-      };
-      await apiClient.post('/orders', payload);
-      message.success('Pedido criado com sucesso!');
-      navigate('/orders');
+      await apiClient.put(`/orders/${id}`, buildPayload());
+      message.success(isDraft ? 'Rascunho atualizado com sucesso!' : 'Pedido atualizado com sucesso!');
+      refetch();
+      navigate(`/orders/${id}`);
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
-      message.error(axiosErr?.response?.data?.message || 'Erro ao criar pedido.');
+      message.error(axiosErr?.response?.data?.message || 'Erro ao atualizar pedido.');
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleFinalize = async () => {
+    if (!paymentsCoverTotal) {
+      message.warning('O total dos pagamentos deve ser igual ao total do pedido para finalizar.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await apiClient.put(`/orders/${id}`, buildPayload());
+      await apiClient.put(`/orders/${id}/status`, { status: 'pendente' });
+      message.success('Rascunho finalizado com sucesso!');
+      navigate(`/orders/${id}`);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      message.error(axiosErr?.response?.data?.message || 'Erro ao finalizar pedido.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (isLoading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
+  if (!order) return <Typography.Text>Pedido não encontrado.</Typography.Text>;
+
+  if (notEditable) {
+    return (
+      <div style={{ padding: 24 }}>
+        <Space style={{ marginBottom: 16 }}>
+          <Button icon={<ArrowLeft size={16} />} onClick={() => navigate(`/orders/${id}`)}>
+            Voltar
+          </Button>
+        </Space>
+        <Title level={4}>Editar Pedido</Title>
+        <Alert
+          type="warning"
+          message="Pedido não pode ser editado"
+          description="Pedidos entregues ou cancelados não podem ser alterados. Cancele e crie um novo pedido se necessário."
+          showIcon
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: 24 }}>
       <Space style={{ marginBottom: 16 }}>
-        <Button icon={<ArrowLeft size={16} />} onClick={() => navigate('/orders')}>
+        <Button icon={<ArrowLeft size={16} />} onClick={() => navigate(`/orders/${id}`)}>
           Voltar
         </Button>
       </Space>
-      <Title level={4}>Novo Pedido</Title>
+      <Title level={4}>Editar Pedido {order.id.slice(0, 8)}</Title>
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 400 }}>
@@ -218,11 +310,10 @@ export const OrdersCreatePage = () => {
             )}
           </Card>
 
-          <Card
-            size="small"
-            title={`Carrinho (${cart.length} itens)`}
-          >
-            {cart.length === 0 ? (
+          <Card size="small" title={`Carrinho (${cart.length} itens)`}>
+            {loadingPrices ? (
+              <Spin size="small" />
+            ) : cart.length === 0 ? (
               <Text type="secondary">Nenhum item adicionado.</Text>
             ) : (
               <Table dataSource={cart} rowKey="item_id" size="small" pagination={false}>
@@ -385,22 +476,35 @@ export const OrdersCreatePage = () => {
                 Add
               </Button>
             </Space>
+            {isDraft && (
+              <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+                Rascunhos aceitam pagamentos parciais ou nenhum pagamento.
+              </Text>
+            )}
           </Card>
 
           <Button
             type="primary"
             size="large"
             block
-            onClick={handleSubmit}
+            onClick={handleSave}
             loading={submitting}
-            disabled={cart.length === 0 || payments.length === 0 || Math.abs(remaining) > 0.01}
+            disabled={cart.length === 0 || (!isDraft && !paymentsCoverTotal)}
             style={{ marginBottom: 8 }}
           >
-            Finalizar Pedido
+            {isDraft ? 'Salvar Rascunho' : 'Salvar Alterações'}
           </Button>
-          <Button size="large" block onClick={handleSaveDraft} disabled={cart.length === 0}>
-            Salvar Rascunho
-          </Button>
+          {isDraft && (
+            <Button
+              size="large"
+              block
+              onClick={handleFinalize}
+              loading={submitting}
+              disabled={cart.length === 0 || !paymentsCoverTotal}
+            >
+              Finalizar Pedido
+            </Button>
+          )}
         </div>
       </div>
     </div>

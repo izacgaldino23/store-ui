@@ -3,69 +3,16 @@ import { type CrudFilter } from '@refinedev/core';
 import { Table, Tag, Button, Select, DatePicker } from 'antd';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye } from 'lucide-react';
+import { Eye, Plus, Pencil } from 'lucide-react';
 import dayjs from 'dayjs';
-
-const statusColors: Record<string, string> = {
-  pendente: 'orange',
-  em_producao: 'blue',
-  pronto: 'green',
-  entregue: 'default',
-};
-
-const statusLabels: Record<string, string> = {
-  pendente: 'Pendente',
-  em_producao: 'Em Produção',
-  pronto: 'Pronto',
-  entregue: 'Entregue',
-};
-
-function formatCurrency(value?: number | null): string {
-  if (value == null) return '-';
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
-}
-
-function formatDate(value?: string | null): string {
-  if (!value) return '-';
-  return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value));
-}
-
-interface IOrderItem {
-  id: string;
-  item_id: string;
-  item_type: string;
-  item_name: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-}
-
-interface IPayment {
-  id: string;
-  method: string;
-  amount: number;
-}
-
-interface IOrder {
-  id: string;
-  items: IOrderItem[];
-  payments: IPayment[];
-  total_amount: number;
-  status: string;
-  notes?: string;
-  customer_name?: string;
-  created_at: string;
-  updated_at: string;
-}
+import {
+  statusColors,
+  statusLabels,
+  statusFilterOptions,
+  formatCurrency,
+  formatDate,
+} from './constants';
+import type { IOrder, IOrderItem } from './types';
 
 export const OrdersListPage = () => {
   const navigate = useNavigate();
@@ -86,7 +33,15 @@ export const OrdersListPage = () => {
   };
 
   return (
-    <List>
+    <List
+      headerProps={{
+        extra: (
+          <Button type="primary" icon={<Plus size={16} />} onClick={() => navigate('/orders/create')}>
+            Criar Pedido
+          </Button>
+        ),
+      }}
+    >
       <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
         <Select
           allowClear
@@ -97,12 +52,7 @@ export const OrdersListPage = () => {
             applyFilters(value, dateRange);
           }}
           style={{ width: 180 }}
-          options={[
-            { value: 'pendente', label: 'Pendente' },
-            { value: 'em_producao', label: 'Em Produção' },
-            { value: 'pronto', label: 'Pronto' },
-            { value: 'entregue', label: 'Entregue' },
-          ]}
+          options={statusFilterOptions}
         />
         <DatePicker.RangePicker
           value={dateRange}
@@ -168,15 +118,26 @@ export const OrdersListPage = () => {
         <Table.Column
           title="Ações"
           key="actions"
-          width={100}
+          width={140}
           render={(_, record: IOrder) => (
-            <Button
-              type="link"
-              title="Visualizar"
-              onClick={() => navigate(`/orders/${record.id}`)}
-            >
-              <Eye size={16} />
-            </Button>
+            <>
+              <Button
+                type="link"
+                title="Visualizar"
+                onClick={() => navigate(`/orders/${record.id}`)}
+              >
+                <Eye size={16} />
+              </Button>
+              {!['entregue', 'cancelado'].includes(record.status) && (
+                <Button
+                  type="link"
+                  title="Editar"
+                  onClick={() => navigate(`/orders/${record.id}/edit`)}
+                >
+                  <Pencil size={16} />
+                </Button>
+              )}
+            </>
           )}
         />
       </Table>

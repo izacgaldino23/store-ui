@@ -5,15 +5,6 @@ import { useNavigate } from 'react-router-dom';
 
 const { Title } = Typography;
 
-const paperTypeOptions = [
-  { value: 'A4', label: 'A4' },
-  { value: 'A3', label: 'A3' },
-  { value: 'fotografico', label: 'Fotográfico' },
-  { value: 'cartao', label: 'Cartão' },
-  { value: 'adesivo', label: 'Adesivo' },
-  { value: 'outro', label: 'Outro' },
-];
-
 export const PriceTableCreatePage = () => {
   const navigate = useNavigate();
   const { formProps, saveButtonProps } = useForm({

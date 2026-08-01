@@ -1,85 +1,28 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOne } from '@refinedev/core';
-import { Card, Descriptions, Table, Tag, Button, Space, Typography, Spin, message, Modal } from 'antd';
-import { ArrowLeft } from 'lucide-react';
+import { Card, Descriptions, Table, Tag, Button, Space, Typography, Spin, message, Modal, Input } from 'antd';
+import { ArrowLeft, Pencil, XCircle } from 'lucide-react';
 import apiClient from '../../providers/rest-client';
+import {
+  statusColors,
+  statusLabels,
+  paymentMethodLabels,
+  validTransitions,
+  formatCurrency,
+  formatDate,
+} from './constants';
+import type { IOrder } from './types';
 
 const { Title } = Typography;
 
-const statusColors: Record<string, string> = {
-  pendente: 'orange',
-  em_producao: 'blue',
-  pronto: 'green',
-  entregue: 'default',
+const okTextMap: Record<string, string> = {
+  pendente: 'Confirmar Pendente',
+  em_producao: 'Iniciar Produção',
+  pronto: 'Marcar como Pronto',
+  entregue: 'Confirmar Entrega',
 };
 
-const statusLabels: Record<string, string> = {
-  pendente: 'Pendente',
-  em_producao: 'Em Produção',
-  pronto: 'Pronto',
-  entregue: 'Entregue',
-};
-
-const paymentMethodLabels: Record<string, string> = {
-  pix: 'Pix',
-  dinheiro: 'Dinheiro',
-  credito: 'Crédito',
-  debito: 'Débito',
-};
-
-const validTransitions: Record<string, string[]> = {
-  pendente: ['em_producao', 'pronto'],
-  em_producao: ['pronto'],
-  pronto: ['entregue'],
-  entregue: [],
-};
-
-function formatCurrency(value?: number | null): string {
-  if (value == null) return '-';
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
-}
-
-function formatDate(value?: string | null): string {
-  if (!value) return '-';
-  return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value));
-}
-
-interface IOrderItem {
-  id: string;
-  item_id: string;
-  item_type: string;
-  item_name: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-}
-
-interface IPayment {
-  id: string;
-  method: string;
-  amount: number;
-}
-
-interface IOrder {
-  id: string;
-  items: IOrderItem[];
-  payments: IPayment[];
-  total_amount: number;
-  status: string;
-  notes?: string;
-  customer_name?: string;
-  created_at: string;
-  updated_at: string;
-}
+const editableStatuses = ['rascunho', 'pendente', 'em_producao', 'pronto'];
 
 export const OrdersShowPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -92,15 +35,10 @@ export const OrdersShowPage = () => {
   const order = data?.data;
 
   const confirmStatusChange = (newStatus: string) => {
-    const labels: Record<string, string> = {
-      em_producao: 'Iniciar Produção',
-      pronto: 'Marcar como Pronto',
-      entregue: 'Confirmar Entrega',
-    };
     Modal.confirm({
       title: 'Confirmar alteração de status',
       content: `Tem certeza que deseja alterar o status para "${statusLabels[newStatus]}"?`,
-      okText: labels[newStatus] || 'Confirmar',
+      okText: okTextMap[newStatus] || 'Confirmar',
       cancelText: 'Cancelar',
       onOk: () => handleUpdateStatus(newStatus),
     });
@@ -117,10 +55,48 @@ export const OrdersShowPage = () => {
     }
   };
 
+  const confirmCancel = () => {
+    let reason = '';
+    Modal.confirm({
+      title: 'Cancelar pedido',
+      content: (
+        <div>
+          <Typography.Paragraph type="secondary">
+            Tem certeza que deseja cancelar este pedido?
+          </Typography.Paragraph>
+          <Input.TextArea
+            placeholder="Motivo do cancelamento (opcional)"
+            rows={2}
+            onChange={(e) => {
+              reason = e.target.value;
+            }}
+          />
+        </div>
+      ),
+      okText: 'Cancelar Pedido',
+      okButtonProps: { danger: true },
+      cancelText: 'Voltar',
+      onOk: () => handleCancelOrder(reason),
+    });
+  };
+
+  const handleCancelOrder = async (reason?: string) => {
+    try {
+      await apiClient.post(`/orders/${id}/cancel`, { reason: reason || undefined });
+      message.success('Pedido cancelado com sucesso');
+      refetch();
+    } catch (err: unknown) {
+      const axiosErr = err as { message?: string };
+      message.error(axiosErr?.message || 'Erro ao cancelar pedido');
+    }
+  };
+
   if (isLoading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
   if (!order) return <Typography.Text>Pedido não encontrado.</Typography.Text>;
 
   const nextStatuses = validTransitions[order.status] || [];
+  const canEdit = editableStatuses.includes(order.status);
+  const canCancel = order.status !== 'cancelado';
 
   return (
     <div style={{ padding: 24 }}>
@@ -143,26 +119,49 @@ export const OrdersShowPage = () => {
           <Descriptions.Item label="Observações">{order.notes || '-'}</Descriptions.Item>
           <Descriptions.Item label="Criado em">{formatDate(order.created_at)}</Descriptions.Item>
           <Descriptions.Item label="Atualizado em">{formatDate(order.updated_at)}</Descriptions.Item>
+          {order.status === 'cancelado' && (
+            <>
+              <Descriptions.Item label="Motivo do cancelamento">
+                {order.cancel_reason || '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Cancelado em">
+                {formatDate(order.canceled_at || order.updated_at)}
+              </Descriptions.Item>
+            </>
+          )}
         </Descriptions>
-        {nextStatuses.length > 0 && (
-          <Space style={{ marginTop: 16 }}>
-            {nextStatuses.includes('em_producao') && (
-              <Button type="primary" onClick={() => confirmStatusChange('em_producao')}>
-                Iniciar Produção
-              </Button>
-            )}
-            {nextStatuses.includes('pronto') && (
-              <Button type="primary" onClick={() => confirmStatusChange('pronto')}>
-                Marcar como Pronto
-              </Button>
-            )}
-            {nextStatuses.includes('entregue') && (
-              <Button type="primary" onClick={() => confirmStatusChange('entregue')}>
-                Confirmar Entrega
-              </Button>
-            )}
-          </Space>
-        )}
+        <Space style={{ marginTop: 16 }}>
+          {nextStatuses.includes('pendente') && (
+            <Button type="primary" onClick={() => confirmStatusChange('pendente')}>
+              Marcar como Pendente
+            </Button>
+          )}
+          {nextStatuses.includes('em_producao') && (
+            <Button type="primary" onClick={() => confirmStatusChange('em_producao')}>
+              Iniciar Produção
+            </Button>
+          )}
+          {nextStatuses.includes('pronto') && (
+            <Button type="primary" onClick={() => confirmStatusChange('pronto')}>
+              Marcar como Pronto
+            </Button>
+          )}
+          {nextStatuses.includes('entregue') && (
+            <Button type="primary" onClick={() => confirmStatusChange('entregue')}>
+              Confirmar Entrega
+            </Button>
+          )}
+          {canEdit && (
+            <Button icon={<Pencil size={16} />} onClick={() => navigate(`/orders/${order.id}/edit`)}>
+              Editar Pedido
+            </Button>
+          )}
+          {canCancel && (
+            <Button danger icon={<XCircle size={16} />} onClick={confirmCancel}>
+              Cancelar Pedido
+            </Button>
+          )}
+        </Space>
       </Card>
 
       <Title level={5}>Itens</Title>

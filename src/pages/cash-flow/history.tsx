@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, Typography, Space, Table, Tag, Button, DatePicker, Spin } from 'antd';
-import { ArrowLeft, History } from 'lucide-react';
+import { Card, Typography, Space, Table, Tag, Button, DatePicker } from 'antd';
+import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../providers/rest-client';
 

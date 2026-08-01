@@ -9,7 +9,7 @@ export const PriceTableEditPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
-  const { formProps, saveButtonProps, queryResult } = useForm({
+  const { formProps, saveButtonProps } = useForm({
     resource: 'price-table',
     id,
     redirect: false,

@@ -1,6 +1,6 @@
 import { useTable, List } from '@refinedev/antd';
 import { useDelete, useInvalidate } from '@refinedev/core';
-import { Table, Space, Button, Tag, Modal, Input, Select, message } from 'antd';
+import { Table, Space, Button, Tag, Modal, Select, message } from 'antd';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';

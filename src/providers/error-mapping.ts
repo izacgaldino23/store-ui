@@ -23,6 +23,7 @@ export const errorMessages: Record<string, string> = {
   order_item_not_found: 'Item do pedido não encontrado no catálogo.',
   invalid_order_status: 'Status do pedido inválido.',
   invalid_transition: 'Transição de status inválida para este pedido.',
+  order_not_editable: 'Este pedido não pode ser editado. Apenas rascunhos, pendentes, em produção ou prontos podem ser alterados.',
   payment_mismatch: 'Valor total dos pagamentos não corresponde ao total do pedido.',
   insufficient_stock: 'Estoque insuficiente para um ou mais itens.',
   price_table_entry_not_found: 'Entrada de preço não encontrada.',
