@@ -2,69 +2,75 @@
 
 ## Objetivo
 
-Módulo de vendas rápido (PDV). Criar pedidos com múltiplos itens e formas de pagamento, gerenciar status.
+Módulo de vendas rápido (PDV). Criar pedidos com múltiplos itens e formas de pagamento, gerenciar status, salvar rascunhos, editar pedidos e cancelar pedidos.
 
-## Tasks
+## Recursos
 
-- [ ] **3.1** Registrar resource `orders` no `<Refine>` com:
+- Resource `orders` registrado no `<Refine>`:
   - `list: "/orders"`
   - `create: "/orders/create"`
   - `show: "/orders/:id"`
-  - `edit: "/orders/:id/edit"` (apenas status)
+  - `edit: "/orders/:id/edit"`
 
-- [ ] **3.2** Criar `src/pages/orders/list.tsx`:
+## Tasks
+
+- [x] **3.1** Registrar resource `orders` no `<Refine>` (list/create/show/edit) + rotas em `App.tsx`.
+
+- [x] **3.2** Criar `src/pages/orders/list.tsx`:
   - Tabela com colunas: ID, Cliente, Status, Total, Itens, Data
-  - Filtros: status (select), período (date range)
+  - Filtro por status (select com todas as opções, incl. rascunho/cancelado)
   - Paginação
-  - Tag colorida por status:
-    - pendente → laranja
-    - em_producao → azul
-    - pronto → verde
-    - entregue → cinza
-  - Botões: Criar Pedido, Visualizar, Atualizar Status
+  - Tag colorida por status (rascunho → roxo, cancelado → vermelho, demais por status)
+  - Botões: Criar Pedido, Visualizar, Editar (oculto para entregue/cancelado)
 
-- [ ] **3.3** Criar `src/pages/orders/create.tsx` (PDV Rápido):
-  - Seção "Cliente": campo de texto para nome (opcional)
-  - Seção "Itens do Pedido":
-    - Select com busca para adicionar item (busca por nome/código)
-    - Campo de quantidade
-    - Tabela de itens adicionados com: Nome, Tipo, Preço Unitário, Quantidade, Subtotal
-    - Botão remover item
-    - Cálculo automático do total
-  - Seção "Pagamentos":
-    - Botão "Adicionar Pagamento"
-    - Para cada pagamento: método (select: pix, dinheiro, credito, debito) + valor
-    - Indicador visual de valor restante vs total
-    - Permite overpayment
-  - Seção "Observações": textarea opcional
-  - Botão "Finalizar Pedido"
-  - Após criar, redirecionar para página de detalhes
+- [x] **3.3** Criar `src/pages/orders/create.tsx` (PDV Rápido):
+  - Busca de produtos com debounce (300ms) e adição ao carrinho
+  - Tabela de itens: Nome, Tipo, Qtd (+/−), Valor Unit., Total, remover
+  - Cálculo automático do total
+  - Seção Pagamentos: método (pix, dinheiro, credito, debito) + valor, indicador de valor restante, permite overpayment
+  - Cliente (opcional) e Observações (opcional)
+  - Botões: "Finalizar Pedido" (exige ≥1 item e pagamentos cobrindo o total) e "Salvar Rascunho" (`status: rascunho`, aceita pagamentos parciais/zero)
+  - Após criar, redireciona para a listagem
 
-- [ ] **3.4** Criar `src/pages/orders/show.tsx`:
-  - Detalhes do pedido
-  - Tabela de itens
-  - Tabela de pagamentos
-  - Status atual com tag colorida
-  - Botões de ação para transição de status (se aplicável)
+- [x] **3.4** Criar `src/pages/orders/show.tsx`:
+  - Detalhes do pedido (status, total, cliente, observações, datas, motivo/ data de cancelamento quando cancelado)
+  - Tabela de itens e tabela de pagamentos
+  - Botões de transição de status válidos (incl. finalização de rascunho para pendente/em_producao/pronto/entregue)
+  - Botão "Editar Pedido" (apenas rascunho/pendente/em_producao/pronto)
+  - Botão "Cancelar Pedido" com modal de motivo opcional (oculto se já cancelado)
 
-- [ ] **3.5** Componente de atualização de status:
-  - Botões/passos mostrando o fluxo: Pendente → Em Produção → Pronto → Entregue
-  - Apenas transições válidas habilitadas
-  - Confirmar antes de mudar
-  - Se todos os itens são revenda, status deve ir direto para "entregue" (regra do backend)
+- [x] **3.5** Edição de pedido (`src/pages/orders/edit.tsx`):
+  - Carrega o pedido e os preços de venda atuais do catálogo por item (GET `/catalog/items/:id` em paralelo)
+  - Edição de itens (qtd/remover/adicionar), pagamentos, cliente e observações
+  - Bloqueia edição de pedidos entregue/cancelado com aviso (alerta + voltar)
+  - Rascunhos: "Salvar Rascunho" (PUT mantém status) e "Finalizar Pedido" (PUT + transição para pendente)
+  - Demais status: "Salvar Alterações" exige pagamentos cobrindo o total
+  - Salva via `PUT /orders/:id`; redireciona para os detalhes
 
-- [ ] **3.6** Modal de busca rápida de produtos:
-  - Input com debounce (300ms)
-  - Resultados exibidos com código + nome + preço + estoque
-  - Ao selecionar, adiciona ao carrinho com quantidade padrão 1
+- [x] **3.6** Cancelamento de pedido:
+  - Modal de confirmação com motivo opcional
+  - `POST /orders/:id/cancel`; exibe motivo/data no show quando cancelado
+
+## Componentes compartilhados
+
+- `src/pages/orders/constants.ts`: statusColors, statusLabels, paymentMethodLabels, validTransitions, statusFilterOptions, paymentMethodOptions, formatCurrency, formatDate
+- `src/pages/orders/types.ts`: IOrder, IOrderItem, IPayment, ICatalogItem, ICartItem
+
+## Erros mapeados
+
+- `order_not_editable` → "Este pedido não pode ser editado. Apenas rascunhos, pendentes, em produção ou prontos podem ser alterados."
+- `payment_mismatch`, `invalid_transition`, `insufficient_stock`, `order_not_found`, `order_item_not_found`, `invalid_order_status` já mapeados em `src/providers/error-mapping.ts`.
 
 ## Critérios de aceitação
 
-- [ ] Criação de pedido funcional com múltiplos itens
-- [ ] Múltiplos pagamentos por pedido
-- [ ] Transição de status com validação
-- [ ] Busca de produtos rápida com debounce
-- [ ] Cálculo automático de totais
-- [ ] Filtros na listagem (status + data)
-- [ ] Todas as mensagens em português
-- [ ] Erros (insufficient_stock, payment_mismatch, invalid_transition) mapeados
+- [x] Criação de pedido funcional com múltiplos itens
+- [x] Múltiplos pagamentos por pedido (overpayment permitido)
+- [x] Rascunhos: criação com itens e pagamentos parciais/zero, sem impacto em estoque
+- [x] Edição de pedidos (rascunho/pendente/em_producao/pronto) com recálculo de preços
+- [x] Cancelamento de pedido com motivo opcional e restauração de estoque quando entregue
+- [x] Transição de status com validação
+- [x] Busca de produtos rápida com debounce
+- [x] Cálculo automático de totais
+- [x] Filtro por status na listagem (incl. rascunho/cancelado)
+- [x] Todas as mensagens em português
+- [x] Erros (insufficient_stock, payment_mismatch, invalid_transition, order_not_editable) mapeados
