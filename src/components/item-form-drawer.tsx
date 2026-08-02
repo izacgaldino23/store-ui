@@ -1,5 +1,5 @@
 import { useForm } from '@refinedev/antd';
-import { Drawer, Form, Input, Select, InputNumber, Button, Space, Row, Col, Spin } from 'antd';
+import { Drawer, Form, Input, Select, InputNumber, Button, Space, Row, Col, Spin, Alert } from 'antd';
 import type { BaseKey } from '@refinedev/core';
 
 interface IItemForm {
@@ -26,7 +26,7 @@ interface ItemFormDrawerProps {
 
 export const ItemFormDrawer = ({ mode, recordId, open, onClose, onSuccess }: ItemFormDrawerProps) => {
   const isEdit = mode === 'edit';
-  const { formProps, saveButtonProps, formLoading, queryResult } = useForm<IItemForm>({
+  const { formProps, saveButtonProps, formLoading, queryResult, form } = useForm<IItemForm>({
     resource: 'items',
     action: isEdit ? 'edit' : 'create',
     id: isEdit ? (recordId ?? undefined) : undefined,
@@ -36,6 +36,8 @@ export const ItemFormDrawer = ({ mode, recordId, open, onClose, onSuccess }: Ite
       onSuccess();
     },
   });
+
+  const watchedItemType = Form.useWatch('item_type', form);
 
   const isLoading = isEdit && (formLoading || queryResult?.isLoading);
 
@@ -60,7 +62,16 @@ export const ItemFormDrawer = ({ mode, recordId, open, onClose, onSuccess }: Ite
           <Spin />
         </div>
       ) : (
-        <Form {...formProps} layout="vertical">
+        <>
+          {isEdit && (
+            <Alert
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message="Ao alterar o tipo do item, o código (REV-/INS-/SVC-) será atualizado automaticamente."
+            />
+          )}
+          <Form {...formProps} layout="vertical">
           <Form.Item
             name="name"
             label="Nome"
@@ -81,8 +92,7 @@ export const ItemFormDrawer = ({ mode, recordId, open, onClose, onSuccess }: Ite
                 rules={[{ required: true, message: 'Tipo é obrigatório' }]}
               >
                 <Select
-                  disabled={isEdit}
-                  placeholder={isEdit ? undefined : 'Selecione o tipo'}
+                  placeholder="Selecione o tipo"
                   options={[
                     { label: 'Revenda', value: 'revenda' },
                     { label: 'Insumo', value: 'insumo' },
@@ -109,7 +119,16 @@ export const ItemFormDrawer = ({ mode, recordId, open, onClose, onSuccess }: Ite
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="sale_price" label="Preço de Venda">
+              <Form.Item
+                name="sale_price"
+                label="Preço de Venda"
+                rules={[
+                  {
+                    required: watchedItemType === 'revenda' || watchedItemType === 'servico',
+                    message: 'Preço de venda é obrigatório para itens de revenda e serviço',
+                  },
+                ]}
+              >
                 <InputNumber min={0} step={0.01} prefix="R$" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
@@ -143,7 +162,8 @@ export const ItemFormDrawer = ({ mode, recordId, open, onClose, onSuccess }: Ite
           <Form.Item name="description" label="Descrição">
             <Input.TextArea rows={4} />
           </Form.Item>
-        </Form>
+          </Form>
+        </>
       )}
     </Drawer>
   );

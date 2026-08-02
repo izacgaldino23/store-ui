@@ -18,6 +18,7 @@ export const errorMessages: Record<string, string> = {
   invalid_csv: 'Arquivo CSV inválido. Verifique o formato (separador: ponto e vírgula).',
   invalid_item_type: 'Tipo de item inválido. Use: revenda, insumo ou serviço.',
   item_has_movements: 'Item possui movimentações e não pode ser excluído.',
+  sale_price_required: 'Preço de venda é obrigatório para itens de revenda e serviço.',
   invalid_stock_update: 'Atualização de estoque inválida.',
   order_not_found: 'Pedido não encontrado.',
   order_item_not_found: 'Item do pedido não encontrado no catálogo.',
