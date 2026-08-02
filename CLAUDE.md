@@ -11,6 +11,8 @@
 - **Language:** TypeScript
 - **Package Manager:** bun
 
+⚠️ **React 19 + antd v5:** antd v5 supports React 16–18. React 19 requires the compat patch — `@ant-design/v5-patch-for-react-19` MUST stay as the first import in `src/index.tsx`. Without it, static antd methods (`Modal.confirm`, `message.*`, `notification.*`) silently fail to render (no modal/toast, no error), while JSX components keep working. Never remove that import.
+
 ## Architecture
 
 ```
