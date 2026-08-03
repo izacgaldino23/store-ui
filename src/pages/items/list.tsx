@@ -51,6 +51,7 @@ export const ItemsListPage = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [batchDeleteModalOpen, setBatchDeleteModalOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
+  const [barcodeFilter, setBarcodeFilter] = useState<string | undefined>(undefined);
   const [adjustModalOpen, setAdjustModalOpen] = useState(false);
   const [adjustStockId, setAdjustStockId] = useState<string | null>(null);
   const [adjustCurrentStock, setAdjustCurrentStock] = useState(0);
@@ -71,11 +72,12 @@ export const ItemsListPage = () => {
     queryOptions: { enabled: tabKey === 'low-stock' },
   });
 
-  const applyFilters = (search?: string, type?: string) => {
+  const applyFilters = (search?: string, type?: string, barcode?: string) => {
     setCurrent(1);
     const f: CrudFilter[] = [];
     if (search) f.push({ field: 'search', operator: 'contains', value: search });
     if (type) f.push({ field: 'type', operator: 'eq', value: type });
+    if (barcode) f.push({ field: 'barcode', operator: 'eq', value: barcode });
     setFilters(f, 'replace');
   };
 
@@ -270,9 +272,9 @@ export const ItemsListPage = () => {
                 onChange={(e) => {
                   const val = e.target.value;
                   setSearchText(val);
-                  if (!val) applyFilters(undefined, typeFilter);
+                  if (!val) applyFilters(undefined, typeFilter, barcodeFilter);
                 }}
-                onSearch={(value) => applyFilters(value || undefined, typeFilter)}
+                onSearch={(value) => applyFilters(value || undefined, typeFilter, barcodeFilter)}
                 style={{ width: 250 }}
               />
               <Select
@@ -281,13 +283,27 @@ export const ItemsListPage = () => {
                 value={typeFilter}
                 onChange={(value) => {
                   setTypeFilter(value);
-                  applyFilters(searchText, value);
+                  applyFilters(searchText, value, barcodeFilter);
                 }}
                 style={{ width: 180 }}
                 options={[
                   { label: 'Revenda', value: 'revenda' },
                   { label: 'Insumo', value: 'insumo' },
                   { label: 'Serviço', value: 'servico' },
+                ]}
+              />
+              <Select
+                allowClear
+                placeholder="Código de barras"
+                value={barcodeFilter}
+                onChange={(value) => {
+                  setBarcodeFilter(value);
+                  applyFilters(searchText, typeFilter, value);
+                }}
+                style={{ width: 200 }}
+                options={[
+                  { label: 'Com código de barras', value: 'with' },
+                  { label: 'Sem código de barras', value: 'without' },
                 ]}
               />
             </div>
@@ -305,10 +321,12 @@ export const ItemsListPage = () => {
                 showTotal: (total) => `Total: ${total} itens`,
               }}
             >
-              <Table.Column dataIndex="code" title="Código" width={110} />
+              <Table.Column dataIndex="code" title="Código" width={110} sorter />
               <Table.Column
+                dataIndex="name"
                 title="Nome"
                 ellipsis
+                sorter
                 render={(_, record: IItem) => record.display_name || record.name}
               />
               <Table.Column
@@ -349,19 +367,6 @@ export const ItemsListPage = () => {
                 )}
               />
               <Table.Column dataIndex="min_stock" title="Est. Mínimo" width={105} align="right" />
-              <Table.Column
-                dataIndex="active"
-                title="Ativo"
-                width={80}
-                align="center"
-                render={(active: boolean) =>
-                  active ? (
-                    <Tag color="green">Sim</Tag>
-                  ) : (
-                    <Tag color="red">Não</Tag>
-                  )
-                }
-              />
               <Table.Column
                 title="Ações"
                 key="actions"
