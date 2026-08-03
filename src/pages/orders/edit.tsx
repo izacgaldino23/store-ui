@@ -16,8 +16,9 @@ import {
   Spin,
   Alert,
 } from 'antd';
-import { Plus, Minus, Trash2, ArrowLeft } from 'lucide-react';
+import { Plus, Minus, Trash2, ArrowLeft, ReceiptText } from 'lucide-react';
 import apiClient from '../../providers/rest-client';
+import { OrderReceiptModal } from '../../components/order-receipt-modal';
 import { formatCurrency, paymentMethodOptions } from './constants';
 import type { ICatalogItem, ICartItem, IOrder, IPayment } from './types';
 
@@ -45,6 +46,7 @@ export const OrdersEditPage = () => {
 
   const [pendingMethod, setPendingMethod] = useState<string | undefined>();
   const [pendingAmount, setPendingAmount] = useState<number>(0);
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   useEffect(() => {
     if (!order) return;
@@ -243,6 +245,11 @@ export const OrdersEditPage = () => {
           <Button icon={<ArrowLeft size={16} />} onClick={() => navigate(`/orders/${id}`)}>
             Voltar
           </Button>
+          {order.status !== 'cancelado' && (
+            <Button icon={<ReceiptText size={16} />} onClick={() => setReceiptOpen(true)}>
+              Recibo
+            </Button>
+          )}
         </Space>
         <Title level={4}>Editar Pedido</Title>
         <Alert
@@ -250,6 +257,11 @@ export const OrdersEditPage = () => {
           message="Pedido não pode ser editado"
           description="Pedidos entregues ou cancelados não podem ser alterados. Cancele e crie um novo pedido se necessário."
           showIcon
+        />
+        <OrderReceiptModal
+          order={order}
+          open={receiptOpen}
+          onClose={() => setReceiptOpen(false)}
         />
       </div>
     );
@@ -261,6 +273,11 @@ export const OrdersEditPage = () => {
         <Button icon={<ArrowLeft size={16} />} onClick={() => navigate(`/orders/${id}`)}>
           Voltar
         </Button>
+        {order.status !== 'cancelado' && (
+          <Button icon={<ReceiptText size={16} />} onClick={() => setReceiptOpen(true)}>
+            Recibo
+          </Button>
+        )}
       </Space>
       <Title level={4}>Editar Pedido {order.id.slice(0, 8)}</Title>
 
@@ -507,6 +524,12 @@ export const OrdersEditPage = () => {
           )}
         </div>
       </div>
+
+      <OrderReceiptModal
+        order={order}
+        open={receiptOpen}
+        onClose={() => setReceiptOpen(false)}
+      />
     </div>
   );
 };

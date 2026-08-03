@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOne } from '@refinedev/core';
 import { Card, Descriptions, Table, Tag, Button, Space, Typography, Spin, message, Modal, Input } from 'antd';
-import { ArrowLeft, Pencil, XCircle } from 'lucide-react';
+import { ArrowLeft, Pencil, XCircle, ReceiptText } from 'lucide-react';
 import apiClient from '../../providers/rest-client';
+import { OrderReceiptModal } from '../../components/order-receipt-modal';
 import {
   statusColors,
   statusLabels,
@@ -38,6 +39,7 @@ export const OrdersShowPage = () => {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [canceling, setCanceling] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   const confirmStatusChange = (newStatus: string) => {
     Modal.confirm({
@@ -150,6 +152,11 @@ export const OrdersShowPage = () => {
               Cancelar Pedido
             </Button>
           )}
+          {order.status !== 'cancelado' && (
+            <Button icon={<ReceiptText size={16} />} onClick={() => setReceiptOpen(true)}>
+              Recibo
+            </Button>
+          )}
         </Space>
       </Card>
 
@@ -218,6 +225,12 @@ export const OrdersShowPage = () => {
           onChange={(e) => setCancelReason(e.target.value)}
         />
       </Modal>
+
+      <OrderReceiptModal
+        order={order}
+        open={receiptOpen}
+        onClose={() => setReceiptOpen(false)}
+      />
     </div>
   );
 };
