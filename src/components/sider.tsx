@@ -22,6 +22,7 @@ import {
 import type { RefineThemedLayoutV2SiderProps } from '@refinedev/antd';
 import { ThemedTitleV2, useThemedLayoutContext } from '@refinedev/antd';
 import { useLink, useRouterContext, useRouterType, useTitle } from '@refinedev/core';
+import './sider.css';
 
 const floatingActionButtonStyles: React.CSSProperties = {
   borderStartStartRadius: 0,
@@ -191,6 +192,7 @@ export const AppSider = ({
       >
         <Layout>
           <Layout.Sider
+            className="app-sider"
             style={{ height: '100vh', backgroundColor: token.colorBgContainer }}
           >
             <div
@@ -249,6 +251,7 @@ export const AppSider = ({
         <div style={{ width: siderCollapsed ? 80 : 200, transition: 'all 0.2s' }} />
       )}
       <Layout.Sider
+        className="app-sider"
         style={siderStyles}
         collapsible
         collapsed={siderCollapsed}

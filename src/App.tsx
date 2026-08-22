@@ -8,7 +8,6 @@ import {
   ShoppingCart,
   Tag,
   Wallet,
-  Printer,
 } from 'lucide-react';
 import { ConfigProvider } from 'antd';
 import { dataProvider } from './providers/data-provider';
@@ -63,7 +62,7 @@ function App() {
           {
             name: 'printing',
             list: '/printing',
-            meta: { parent: 'catalog', label: 'Impressão', icon: <Printer size={16} /> },
+            meta: { parent: 'catalog', label: 'Impressão' },
           },
 
           {
