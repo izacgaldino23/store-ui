@@ -30,7 +30,8 @@ store-ui/
 │   │   ├── pricing/             # price-table (list, create, edit) + calculadora
 │   │   └── cash-flow/           # caixa atual, relatório, histórico, despesas
 │   ├── components/
-│   │   └── logo.tsx
+│   │   ├── logo.tsx
+│   │   └── sider.tsx             # custom AppSider: replaces ThemedSiderV2; groups always open (controlled openKeys, ME-002); easy revert = use ThemedSiderV2 in App.tsx again
 │   ├── config.ts
 │   ├── App.tsx
 │   └── index.tsx
@@ -66,7 +67,7 @@ A API REST não segue o formato padrão do `@refinedev/simple-rest`:
 | `printing/papers` | `/api/printing/papers` | list, create, edit, delete (via página Catálogo → Impressão) |
 | `printing/addons` | `/api/printing/addons` | list, create, edit, delete (via página Catálogo → Impressão) |
 | `orders` | `/api/orders` | list, create, show |
-| `price-table` | `/api/pricing/table` | list, create, edit, delete |
+| `price-table` | `/api/pricing/table` | list, create, edit, delete (hidden from sider via `meta.hide`, ME-001; pages kept at `/pricing/*`) |
 | `cash-register` | `/api/cash-register` | open, close, current, daily-report |
 | `expenses` | `/api/expenses` | list, create |
 

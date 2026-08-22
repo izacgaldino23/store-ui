@@ -1,5 +1,5 @@
 import { Refine, Authenticated } from '@refinedev/core';
-import { ThemedLayoutV2, ThemedSiderV2, useNotificationProvider } from '@refinedev/antd';
+import { ThemedLayoutV2, useNotificationProvider } from '@refinedev/antd';
 import routerBindings from '@refinedev/react-router-v6';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import {
@@ -15,6 +15,7 @@ import { dataProvider } from './providers/data-provider';
 import { authProvider } from './providers/auth-provider';
 import { i18nProvider } from './i18n';
 import { Logo } from './components/logo';
+import { AppSider } from './components/sider';
 import { themeConfig, renderEmpty } from './theme';
 import { DashboardPage } from './pages/dashboard';
 import { LoginPage } from './pages/login';
@@ -75,19 +76,19 @@ function App() {
           },
           {
             name: 'pricing',
-            meta: { icon: <Tag size={20} />, label: 'Preços' },
+            meta: { icon: <Tag size={20} />, label: 'Preços', hide: true },
           },
           {
             name: 'price-table',
             list: '/pricing/table',
             create: '/pricing/table/create',
             edit: '/pricing/table/:id/edit',
-            meta: { parent: 'pricing', label: 'Tabela de Preços' },
+            meta: { parent: 'pricing', label: 'Tabela de Preços', hide: true },
           },
           {
             name: 'calculator',
             list: '/pricing/calculator',
-            meta: { parent: 'pricing', label: 'Calculadora de Margem' },
+            meta: { parent: 'pricing', label: 'Calculadora de Margem', hide: true },
           },
           {
             name: 'cash',
@@ -119,7 +120,7 @@ function App() {
           <Route
             element={
               <Authenticated key="authenticated" redirectOnFail="/login">
-                <ThemedLayoutV2 Title={Logo} Sider={(props) => <ThemedSiderV2 {...props} fixed />}>
+                <ThemedLayoutV2 Title={Logo} Sider={(props) => <AppSider {...props} fixed />}>
                   <Outlet />
                 </ThemedLayoutV2>
               </Authenticated>
