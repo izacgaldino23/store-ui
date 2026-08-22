@@ -17,6 +17,7 @@ export interface IPayment {
 export interface IOrder {
   id: string;
   items: IOrderItem[];
+  prints?: IOrderPrint[];
   payments: IPayment[];
   total_amount: number;
   status: string;
@@ -43,4 +44,45 @@ export interface ICartItem {
   quantity: number;
   unit_price: number;
   total_price: number;
+}
+
+export interface IPrintAddon {
+  id: string;
+  name: string;
+  price_type: 'fixed' | 'percentage';
+  price_value: number;
+  active: boolean;
+}
+
+export interface IPrintPaper {
+  id: string;
+  item_id?: string | null;
+  custom_name?: string | null;
+  display_name: string;
+  price_per_sheet: number;
+  sheets_remaining?: number | null;
+  active: boolean;
+}
+
+export interface IOrderPrintAddon {
+  addon_id: string;
+  name: string;
+  price_type: string;
+  price_value: number;
+}
+
+export interface IOrderPrint {
+  id: string;
+  print_paper_id: string;
+  paper_name: string;
+  quantity: number;
+  addons: IOrderPrintAddon[];
+  unit_price: number;
+  total_price: number;
+}
+
+export interface IPrintLine {
+  print_paper_id?: string;
+  quantity: number;
+  addon_ids: string[];
 }

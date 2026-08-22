@@ -20,7 +20,9 @@ import { Plus, Minus, Trash2, ArrowLeft, ReceiptText } from 'lucide-react';
 import apiClient from '../../providers/rest-client';
 import { OrderReceiptModal } from '../../components/order-receipt-modal';
 import { formatCurrency, paymentMethodOptions } from './constants';
-import type { ICatalogItem, ICartItem, IOrder, IPayment } from './types';
+import { PrintsCard } from './prints-card';
+import { usePrintCatalog } from './print-catalog';
+import type { ICatalogItem, ICartItem, IOrder, IPayment, IPrintLine } from './types';
 
 const { Title, Text } = Typography;
 
@@ -38,6 +40,7 @@ export const OrdersEditPage = () => {
   const [searchResults, setSearchResults] = useState<ICatalogItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [cart, setCart] = useState<ICartItem[]>([]);
+  const [prints, setPrints] = useState<IPrintLine[]>([]);
   const [payments, setPayments] = useState<IPayment[]>([]);
   const [customerName, setCustomerName] = useState('');
   const [notes, setNotes] = useState('');
@@ -47,6 +50,9 @@ export const OrdersEditPage = () => {
   const [pendingMethod, setPendingMethod] = useState<string | undefined>();
   const [pendingAmount, setPendingAmount] = useState<number>(0);
   const [receiptOpen, setReceiptOpen] = useState(false);
+
+  const { papers: printPapers, addons: printAddons, loading: printCatalogLoading } =
+    usePrintCatalog();
 
   useEffect(() => {
     if (!order) return;
@@ -87,6 +93,13 @@ export const OrdersEditPage = () => {
             amount: p.amount,
           }))
         );
+        setPrints(
+          (order.prints || []).map((p) => ({
+            print_paper_id: p.print_paper_id,
+            quantity: p.quantity,
+            addon_ids: p.addons.map((a) => a.addon_id),
+          }))
+        );
         setCustomerName(order.customer_name || '');
         setNotes(order.notes || '');
       } finally {
@@ -120,8 +133,22 @@ export const OrdersEditPage = () => {
   }, [searchText]);
 
   const orderTotal = cart.reduce((sum, item) => sum + item.total_price, 0);
+  const printsTotal = prints.reduce((sum, line) => {
+    const paper = printPapers.find((p) => p.id === line.print_paper_id);
+    if (!paper) return sum;
+    const selected = printAddons.filter((a) => line.addon_ids.includes(a.id));
+    let unit = paper.price_per_sheet;
+    let percentSum = 0;
+    for (const addon of selected) {
+      if (addon.price_type === 'fixed') unit += addon.price_value;
+      else percentSum += addon.price_value;
+    }
+    unit += unit * (percentSum / 100);
+    return sum + Math.round(unit * 100) / 100 * (line.quantity || 0);
+  }, 0);
+  const grandTotal = orderTotal + printsTotal;
   const paymentTotal = payments.reduce((sum, p) => sum + p.amount, 0);
-  const remaining = orderTotal - paymentTotal;
+  const remaining = grandTotal - paymentTotal;
 
   const isDraft = order?.status === 'rascunho';
   const notEditable = order && (order.status === 'entregue' || order.status === 'cancelado');
@@ -182,18 +209,30 @@ export const OrdersEditPage = () => {
     setPendingAmount(Math.max(0, Math.round(remaining * 100) / 100));
   };
 
+  const buildPrintsPayload = () =>
+    prints
+      .filter((p) => p.print_paper_id)
+      .map((p) => ({
+        print_paper_id: p.print_paper_id as string,
+        quantity: p.quantity,
+        addon_ids: p.addon_ids,
+      }));
+
   const buildPayload = () => ({
     items: cart.map((i) => ({ item_id: i.item_id, quantity: i.quantity })),
+    prints: buildPrintsPayload(),
     payments: payments.map((p) => ({ method: p.method, amount: p.amount })),
     customer_name: customerName || undefined,
     notes: notes || undefined,
   });
 
   const paymentsCoverTotal = payments.length > 0 && Math.abs(remaining) <= 0.01;
+  const hasValidPrints = prints.some((p) => p.print_paper_id);
+  const hasContent = cart.length > 0 || hasValidPrints;
 
   const handleSave = async () => {
-    if (cart.length === 0) {
-      message.warning('Adicione pelo menos um item ao pedido.');
+    if (!hasContent) {
+      message.warning('Adicione pelo menos um item ou impressão ao pedido.');
       return;
     }
     if (!isDraft && !paymentsCoverTotal) {
@@ -396,12 +435,28 @@ export const OrdersEditPage = () => {
             )}
             <Divider />
             <div style={{ textAlign: 'right' }}>
+              <Text>Itens: {formatCurrency(orderTotal)}</Text>
+              {printsTotal > 0 && (
+                <>
+                  <br />
+                  <Text>Impressões: {formatCurrency(printsTotal)}</Text>
+                </>
+              )}
+              <br />
               <Text strong>Total: </Text>
               <Text strong style={{ fontSize: 18 }}>
-                {formatCurrency(orderTotal)}
+                {formatCurrency(grandTotal)}
               </Text>
             </div>
           </Card>
+
+          <PrintsCard
+            value={prints}
+            onChange={setPrints}
+            papers={printPapers}
+            addons={printAddons}
+            loading={printCatalogLoading}
+          />
         </div>
 
         <div style={{ width: 380 }}>
@@ -506,7 +561,7 @@ export const OrdersEditPage = () => {
             block
             onClick={handleSave}
             loading={submitting}
-            disabled={cart.length === 0 || (!isDraft && !paymentsCoverTotal)}
+            disabled={!hasContent || (!isDraft && !paymentsCoverTotal)}
             style={{ marginBottom: 8 }}
           >
             {isDraft ? 'Salvar Rascunho' : 'Salvar Alterações'}
@@ -517,7 +572,7 @@ export const OrdersEditPage = () => {
               block
               onClick={handleFinalize}
               loading={submitting}
-              disabled={cart.length === 0 || !paymentsCoverTotal}
+              disabled={!hasContent || !paymentsCoverTotal}
             >
               Finalizar Pedido
             </Button>

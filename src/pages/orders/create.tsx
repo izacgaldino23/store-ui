@@ -4,7 +4,9 @@ import { Card, Table, Button, Input, Select, InputNumber, Space, Typography, mes
 import { Plus, Minus, Trash2, ArrowLeft } from 'lucide-react';
 import apiClient from '../../providers/rest-client';
 import { formatCurrency, paymentMethodOptions } from './constants';
-import type { ICatalogItem, ICartItem, IPayment } from './types';
+import { PrintsCard } from './prints-card';
+import { usePrintCatalog } from './print-catalog';
+import type { ICatalogItem, ICartItem, IPayment, IPrintLine } from './types';
 
 const { Title, Text } = Typography;
 
@@ -15,10 +17,14 @@ export const OrdersCreatePage = () => {
   const [searchResults, setSearchResults] = useState<ICatalogItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [cart, setCart] = useState<ICartItem[]>([]);
+  const [prints, setPrints] = useState<IPrintLine[]>([]);
   const [payments, setPayments] = useState<IPayment[]>([]);
   const [customerName, setCustomerName] = useState('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const { papers: printPapers, addons: printAddons, loading: printCatalogLoading } =
+    usePrintCatalog();
 
   const [pendingMethod, setPendingMethod] = useState<string | undefined>();
   const [pendingAmount, setPendingAmount] = useState<number>(0);
@@ -45,8 +51,22 @@ export const OrdersCreatePage = () => {
   }, [searchText]);
 
   const orderTotal = cart.reduce((sum, item) => sum + item.total_price, 0);
+  const printsTotal = prints.reduce((sum, line) => {
+    const paper = printPapers.find((p) => p.id === line.print_paper_id);
+    if (!paper) return sum;
+    const selected = printAddons.filter((a) => line.addon_ids.includes(a.id));
+    let unit = paper.price_per_sheet;
+    let percentSum = 0;
+    for (const addon of selected) {
+      if (addon.price_type === 'fixed') unit += addon.price_value;
+      else percentSum += addon.price_value;
+    }
+    unit += unit * (percentSum / 100);
+    return sum + Math.round(unit * 100) / 100 * (line.quantity || 0);
+  }, 0);
+  const grandTotal = orderTotal + printsTotal;
   const paymentTotal = payments.reduce((sum, p) => sum + p.amount, 0);
-  const remaining = orderTotal - paymentTotal;
+  const remaining = grandTotal - paymentTotal;
 
   const addToCart = (item: ICatalogItem) => {
     setCart((prev) => {
@@ -104,9 +124,19 @@ export const OrdersCreatePage = () => {
     setPendingAmount(Math.max(0, Math.round(remaining * 100) / 100));
   };
 
+  const buildPrintsPayload = () =>
+    prints
+      .filter((p) => p.print_paper_id)
+      .map((p) => ({
+        print_paper_id: p.print_paper_id as string,
+        quantity: p.quantity,
+        addon_ids: p.addon_ids,
+      }));
+
   const handleSaveDraft = async () => {
-    if (cart.length === 0) {
-      message.warning('Adicione pelo menos um item ao pedido.');
+    const printsPayload = buildPrintsPayload();
+    if (cart.length === 0 && printsPayload.length === 0) {
+      message.warning('Adicione pelo menos um item ou impressão ao pedido.');
       return;
     }
 
@@ -114,6 +144,7 @@ export const OrdersCreatePage = () => {
     try {
       const payload = {
         items: cart.map((i) => ({ item_id: i.item_id, quantity: i.quantity })),
+        prints: printsPayload,
         payments: payments.map((p) => ({ method: p.method, amount: p.amount })),
         customer_name: customerName || undefined,
         notes: notes || undefined,
@@ -131,8 +162,9 @@ export const OrdersCreatePage = () => {
   };
 
   const handleSubmit = async () => {
-    if (cart.length === 0) {
-      message.warning('Adicione pelo menos um item ao pedido.');
+    const printsPayload = buildPrintsPayload();
+    if (cart.length === 0 && printsPayload.length === 0) {
+      message.warning('Adicione pelo menos um item ou impressão ao pedido.');
       return;
     }
     if (payments.length === 0) {
@@ -148,6 +180,7 @@ export const OrdersCreatePage = () => {
     try {
       const payload = {
         items: cart.map((i) => ({ item_id: i.item_id, quantity: i.quantity })),
+        prints: printsPayload,
         payments: payments.map((p) => ({ method: p.method, amount: p.amount })),
         customer_name: customerName || undefined,
         notes: notes || undefined,
@@ -162,6 +195,8 @@ export const OrdersCreatePage = () => {
       setSubmitting(false);
     }
   };
+
+  const hasValidPrints = prints.some((p) => p.print_paper_id);
 
   return (
     <div style={{ padding: 24 }}>
@@ -288,12 +323,28 @@ export const OrdersCreatePage = () => {
             )}
             <Divider />
             <div style={{ textAlign: 'right' }}>
+              <Text>Itens: {formatCurrency(orderTotal)}</Text>
+              {printsTotal > 0 && (
+                <>
+                  <br />
+                  <Text>Impressões: {formatCurrency(printsTotal)}</Text>
+                </>
+              )}
+              <br />
               <Text strong>Total: </Text>
               <Text strong style={{ fontSize: 18 }}>
-                {formatCurrency(orderTotal)}
+                {formatCurrency(grandTotal)}
               </Text>
             </div>
           </Card>
+
+          <PrintsCard
+            value={prints}
+            onChange={setPrints}
+            papers={printPapers}
+            addons={printAddons}
+            loading={printCatalogLoading}
+          />
         </div>
 
         <div style={{ width: 380 }}>
@@ -393,12 +444,21 @@ export const OrdersCreatePage = () => {
             block
             onClick={handleSubmit}
             loading={submitting}
-            disabled={cart.length === 0 || payments.length === 0 || Math.abs(remaining) > 0.01}
+            disabled={
+              (!hasValidPrints && cart.length === 0) ||
+              payments.length === 0 ||
+              Math.abs(remaining) > 0.01
+            }
             style={{ marginBottom: 8 }}
           >
             Finalizar Pedido
           </Button>
-          <Button size="large" block onClick={handleSaveDraft} disabled={cart.length === 0}>
+          <Button
+            size="large"
+            block
+            onClick={handleSaveDraft}
+            disabled={!hasValidPrints && cart.length === 0}
+          >
             Salvar Rascunho
           </Button>
         </div>

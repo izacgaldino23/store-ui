@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOne } from '@refinedev/core';
 import { Card, Descriptions, Table, Tag, Button, Space, Typography, Spin, message, Modal, Input } from 'antd';
-import { ArrowLeft, Pencil, XCircle, ReceiptText } from 'lucide-react';
+import { ArrowLeft, Pencil, XCircle, ReceiptText, Printer } from 'lucide-react';
 import apiClient from '../../providers/rest-client';
 import { OrderReceiptModal } from '../../components/order-receipt-modal';
 import {
@@ -13,7 +13,7 @@ import {
   formatCurrency,
   formatDate,
 } from './constants';
-import type { IOrder } from './types';
+import type { IOrder, IOrderPrintAddon } from './types';
 
 const { Title } = Typography;
 
@@ -187,6 +187,47 @@ export const OrdersShowPage = () => {
           render={(val: number) => formatCurrency(val)}
         />
       </Table>
+
+      {order.prints && order.prints.length > 0 && (
+        <>
+          <Title level={5}>
+            <Space>
+              <Printer size={16} /> Impressões
+            </Space>
+          </Title>
+          <Table
+            dataSource={order.prints}
+            rowKey="id"
+            pagination={false}
+            scroll={{ x: 'max-content' }}
+            style={{ marginBottom: 16 }}
+          >
+            <Table.Column dataIndex="paper_name" title="Papel" />
+            <Table.Column
+              dataIndex="addons"
+              title="Adicionais"
+              render={(addons: IOrderPrintAddon[]) =>
+                addons && addons.length > 0 ? addons.map((a) => a.name).join(', ') : '-'
+              }
+            />
+            <Table.Column dataIndex="quantity" title="Qtd" width={80} align="center" />
+            <Table.Column
+              dataIndex="unit_price"
+              title="Valor Unit."
+              width={130}
+              align="right"
+              render={(val: number) => formatCurrency(val)}
+            />
+            <Table.Column
+              dataIndex="total_price"
+              title="Total"
+              width={130}
+              align="right"
+              render={(val: number) => formatCurrency(val)}
+            />
+          </Table>
+        </>
+      )}
 
       <Title level={5}>Pagamentos</Title>
       <Table dataSource={order.payments} rowKey="id" pagination={false} scroll={{ x: 'max-content' }}>

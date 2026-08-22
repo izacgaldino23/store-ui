@@ -7,6 +7,8 @@ const API_BASE = `${API_URL}/api`;
 const resourceMap: Record<string, string> = {
   items: 'catalog/items',
   'items/low-stock': 'catalog/items/low-stock',
+  'printing/papers': 'printing/papers',
+  'printing/addons': 'printing/addons',
   orders: 'orders',
   'price-table': 'pricing/table',
   'cash-register': 'cash-register',
@@ -25,6 +27,8 @@ function adaptListResponse(data: unknown): { data: unknown[]; total: number } {
   const items =
     (obj.items as unknown[]) ||
     (obj.orders as unknown[]) ||
+    (obj.papers as unknown[]) ||
+    (obj.addons as unknown[]) ||
     (obj.registers as unknown[]) ||
     (obj.data as unknown[]) ||
     [];

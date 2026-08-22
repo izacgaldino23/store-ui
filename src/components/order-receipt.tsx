@@ -56,6 +56,21 @@ export const OrderReceipt = ({ order }: OrderReceiptProps) => {
           </div>
         </div>
       ))}
+      {(order.prints?.length || 0) > 0 && <hr style={dividerStyle} />}
+      {(order.prints || []).map((print) => (
+        <div key={print.id} style={{ marginBottom: 6, breakInside: 'avoid' }}>
+          <div>Impressão: {print.paper_name}</div>
+          {print.addons.length > 0 && (
+            <div style={{ fontSize: 11 }}>{print.addons.map((a) => a.name).join(', ')}</div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>
+              {print.quantity} x {formatCurrency(print.unit_price)}
+            </span>
+            <span>{formatCurrency(print.total_price)}</span>
+          </div>
+        </div>
+      ))}
       <hr style={dividerStyle} />
       <div
         style={{

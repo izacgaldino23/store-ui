@@ -8,6 +8,7 @@ import {
   ShoppingCart,
   Tag,
   Wallet,
+  Printer,
 } from 'lucide-react';
 import { ConfigProvider } from 'antd';
 import { dataProvider } from './providers/data-provider';
@@ -19,6 +20,7 @@ import { DashboardPage } from './pages/dashboard';
 import { LoginPage } from './pages/login';
 import { RegisterPage } from './pages/register';
 import { ItemsListPage } from './pages/items/list';
+import { PrintingListPage } from './pages/printing/list';
 import { OrdersListPage } from './pages/orders/list';
 import { OrdersCreatePage } from './pages/orders/create';
 import { OrdersShowPage } from './pages/orders/show';
@@ -56,6 +58,11 @@ function App() {
             name: 'items',
             list: '/items',
             meta: { parent: 'catalog', label: 'Itens', canDelete: true },
+          },
+          {
+            name: 'printing',
+            list: '/printing',
+            meta: { parent: 'catalog', label: 'Impressão', icon: <Printer size={16} /> },
           },
 
           {
@@ -120,6 +127,7 @@ function App() {
           >
             <Route index element={<DashboardPage />} />
             <Route path="/items" element={<ItemsListPage />} />
+            <Route path="/printing" element={<PrintingListPage />} />
             <Route path="/orders" element={<OrdersListPage />} />
             <Route path="/orders/create" element={<OrdersCreatePage />} />
             <Route path="/orders/:id/edit" element={<OrdersEditPage />} />

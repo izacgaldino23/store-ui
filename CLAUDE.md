@@ -63,10 +63,14 @@ A API REST não segue o formato padrão do `@refinedev/simple-rest`:
 |----------|----------|---------|
 | `items` | `/api/catalog/items` | list, create, edit, show, delete |
 | `items/low-stock` | `/api/catalog/items/low-stock` | list |
+| `printing/papers` | `/api/printing/papers` | list, create, edit, delete (via página Catálogo → Impressão) |
+| `printing/addons` | `/api/printing/addons` | list, create, edit, delete (via página Catálogo → Impressão) |
 | `orders` | `/api/orders` | list, create, show |
 | `price-table` | `/api/pricing/table` | list, create, edit, delete |
 | `cash-register` | `/api/cash-register` | open, close, current, daily-report |
 | `expenses` | `/api/expenses` | list, create |
+
+Listas de papers/addons retornam `{ papers: [] }` / `{ addons: [] }` — já tratado no data-provider e nas páginas.
 
 ## Idiomas
 
