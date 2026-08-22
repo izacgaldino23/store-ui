@@ -3,7 +3,7 @@ import { type CrudFilter } from '@refinedev/core';
 import { Table, Tag, Button, Select, DatePicker } from 'antd';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Plus, Pencil } from 'lucide-react';
+import { Eye, Plus, Pencil, Printer } from 'lucide-react';
 import dayjs from 'dayjs';
 import {
   statusColors,
@@ -12,21 +12,27 @@ import {
   formatCurrency,
   formatDate,
 } from './constants';
-import type { IOrder, IOrderItem } from './types';
+import type { IOrder, IOrderItem, IOrderPrint } from './types';
 
 export const OrdersListPage = () => {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
+  const [hasPrintFilter, setHasPrintFilter] = useState<string | undefined>(undefined);
 
   const { tableProps, setFilters } = useTable<IOrder>({
     resource: 'orders',
     pagination: { current: 1, pageSize: 10, mode: 'server' },
   });
 
-  const applyFilters = (status?: string, dates?: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null) => {
+  const applyFilters = (
+    status?: string,
+    dates?: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null,
+    hasPrint?: string
+  ) => {
     const f: CrudFilter[] = [];
     if (status) f.push({ field: 'status', operator: 'eq', value: status });
+    if (hasPrint) f.push({ field: 'has_print', operator: 'eq', value: hasPrint });
     if (dates?.[0]) f.push({ field: 'start_date', operator: 'eq', value: dates[0].startOf('day').toISOString() });
     if (dates?.[1]) f.push({ field: 'end_date', operator: 'eq', value: dates[1].endOf('day').toISOString() });
     setFilters(f, 'replace');
@@ -49,16 +55,34 @@ export const OrdersListPage = () => {
           value={statusFilter}
           onChange={(value) => {
             setStatusFilter(value);
-            applyFilters(value, dateRange);
+            applyFilters(value, dateRange, hasPrintFilter);
           }}
           style={{ width: 180 }}
           options={statusFilterOptions}
+        />
+        <Select
+          allowClear
+          placeholder="Impressão"
+          value={hasPrintFilter}
+          onChange={(value) => {
+            setHasPrintFilter(value);
+            applyFilters(statusFilter, dateRange, value);
+          }}
+          style={{ width: 160 }}
+          options={[
+            { value: 'true', label: 'Com impressão' },
+            { value: 'false', label: 'Sem impressão' },
+          ]}
         />
         <DatePicker.RangePicker
           value={dateRange}
           onChange={(dates) => {
             setDateRange(dates as [dayjs.Dayjs | null, dayjs.Dayjs | null] | null);
-            applyFilters(statusFilter, dates as [dayjs.Dayjs | null, dayjs.Dayjs | null] | null);
+            applyFilters(
+              statusFilter,
+              dates as [dayjs.Dayjs | null, dayjs.Dayjs | null] | null,
+              hasPrintFilter
+            );
           }}
           format="DD/MM/YYYY"
           style={{ width: 260 }}
@@ -91,6 +115,21 @@ export const OrdersListPage = () => {
           width={80}
           align="center"
           render={(items: IOrderItem[]) => items?.length || 0}
+        />
+        <Table.Column
+          dataIndex="prints"
+          title={<Printer size={14} />}
+          width={60}
+          align="center"
+          render={(prints: IOrderPrint[] | undefined) =>
+            prints && prints.length > 0 ? (
+              <span title={`${prints.length} impressão(ões)`}>
+                <Printer size={16} />
+              </span>
+            ) : (
+              '-'
+            )
+          }
         />
         <Table.Column
           dataIndex="total_amount"
