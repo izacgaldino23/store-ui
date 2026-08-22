@@ -266,7 +266,7 @@ export const ItemsListPage = () => {
           <>
             <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
               <Input.Search
-                placeholder="Buscar por nome..."
+                placeholder="Buscar por nome ou código de barras..."
                 allowClear
                 value={searchText}
                 onChange={(e) => {

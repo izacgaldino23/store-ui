@@ -211,7 +211,7 @@ export const OrdersCreatePage = () => {
         <div style={{ flex: 1, minWidth: 400 }}>
           <Card size="small" title="Buscar Produtos" style={{ marginBottom: 16 }}>
             <Input.Search
-              placeholder="Digite o nome do produto..."
+              placeholder="Buscar por nome ou código de barras..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               style={{ marginBottom: 8 }}
