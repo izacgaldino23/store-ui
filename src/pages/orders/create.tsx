@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, Table, Button, Input, Select, InputNumber, Space, Typography, message, Divider, Tag, Spin } from 'antd';
 import { Plus, Minus, Trash2, ArrowLeft } from 'lucide-react';
 import apiClient from '../../providers/rest-client';
+import { ClientSelect, type ClientSelectValue } from '../../components/client-select';
 import { formatCurrency, paymentMethodOptions } from './constants';
 import { PrintsCard } from './prints-card';
 import { usePrintCatalog } from './print-catalog';
@@ -19,7 +20,7 @@ export const OrdersCreatePage = () => {
   const [cart, setCart] = useState<ICartItem[]>([]);
   const [prints, setPrints] = useState<IPrintLine[]>([]);
   const [payments, setPayments] = useState<IPayment[]>([]);
-  const [customerName, setCustomerName] = useState('');
+  const [client, setClient] = useState<ClientSelectValue | null>(null);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -146,7 +147,7 @@ export const OrdersCreatePage = () => {
         items: cart.map((i) => ({ item_id: i.item_id, quantity: i.quantity })),
         prints: printsPayload,
         payments: payments.map((p) => ({ method: p.method, amount: p.amount })),
-        customer_name: customerName || undefined,
+        client_id: client?.id || undefined,
         notes: notes || undefined,
         status: 'rascunho',
       };
@@ -182,7 +183,7 @@ export const OrdersCreatePage = () => {
         items: cart.map((i) => ({ item_id: i.item_id, quantity: i.quantity })),
         prints: printsPayload,
         payments: payments.map((p) => ({ method: p.method, amount: p.amount })),
-        customer_name: customerName || undefined,
+        client_id: client?.id || undefined,
         notes: notes || undefined,
       };
       await apiClient.post('/orders', payload);
@@ -349,11 +350,7 @@ export const OrdersCreatePage = () => {
 
         <div style={{ width: 380 }}>
           <Card size="small" title="Cliente" style={{ marginBottom: 16 }}>
-            <Input
-              placeholder="Nome do cliente (opcional)"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-            />
+            <ClientSelect value={client} onChange={setClient} />
             <Input.TextArea
               placeholder="Observações (opcional)"
               value={notes}

@@ -66,6 +66,7 @@ A API REST não segue o formato padrão do `@refinedev/simple-rest`:
 | `items/low-stock` | `/api/catalog/items/low-stock` | list |
 | `printing/papers` | `/api/printing/papers` | list, create, edit, delete (via página Catálogo → Impressão) |
 | `printing/addons` | `/api/printing/addons` | list, create, edit, delete (via página Catálogo → Impressão) |
+| `clients` | `/api/clients` | list, create, edit, delete (menu de topo "Clientes"; NF-004) |
 | `orders` | `/api/orders` | list, create, show |
 | `price-table` | `/api/pricing/table` | list, create, edit, delete (hidden from sider via `meta.hide`, ME-001; pages kept at `/pricing/*`) |
 | `cash-register` | `/api/cash-register` | open, close, current, daily-report |

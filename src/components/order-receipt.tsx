@@ -41,8 +41,8 @@ export const OrderReceipt = ({ order }: OrderReceiptProps) => {
     <div className="order-receipt-print-area" style={containerStyle}>
       <div style={storeNameStyle}>Miau Gráfica e Papelaria</div>
       <div style={{ ...centeredStyle, marginTop: 6 }}>{formatDate(order.created_at)}</div>
-      {order.customer_name && (
-        <div style={{ ...centeredStyle, marginTop: 2 }}>{order.customer_name}</div>
+      {order.client_name && (
+        <div style={{ ...centeredStyle, marginTop: 2 }}>{order.client_name}</div>
       )}
       <hr style={dividerStyle} />
       {order.items.map((item) => (

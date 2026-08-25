@@ -19,6 +19,7 @@ import {
 import { Plus, Minus, Trash2, ArrowLeft, ReceiptText } from 'lucide-react';
 import apiClient from '../../providers/rest-client';
 import { OrderReceiptModal } from '../../components/order-receipt-modal';
+import { ClientSelect, type ClientSelectValue } from '../../components/client-select';
 import { formatCurrency, paymentMethodOptions } from './constants';
 import { PrintsCard } from './prints-card';
 import { usePrintCatalog } from './print-catalog';
@@ -42,7 +43,7 @@ export const OrdersEditPage = () => {
   const [cart, setCart] = useState<ICartItem[]>([]);
   const [prints, setPrints] = useState<IPrintLine[]>([]);
   const [payments, setPayments] = useState<IPayment[]>([]);
-  const [customerName, setCustomerName] = useState('');
+  const [client, setClient] = useState<ClientSelectValue | null>(null);
   const [notes, setNotes] = useState('');
   const [loadingPrices, setLoadingPrices] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -100,7 +101,7 @@ export const OrdersEditPage = () => {
             addon_ids: p.addons.map((a) => a.addon_id),
           }))
         );
-        setCustomerName(order.customer_name || '');
+        setClient(order.client_id ? { id: order.client_id, name: order.client_name } : null);
         setNotes(order.notes || '');
       } finally {
         if (!cancelled) setLoadingPrices(false);
@@ -222,7 +223,7 @@ export const OrdersEditPage = () => {
     items: cart.map((i) => ({ item_id: i.item_id, quantity: i.quantity })),
     prints: buildPrintsPayload(),
     payments: payments.map((p) => ({ method: p.method, amount: p.amount })),
-    customer_name: customerName || undefined,
+    client_id: client?.id || undefined,
     notes: notes || undefined,
   });
 
@@ -461,11 +462,7 @@ export const OrdersEditPage = () => {
 
         <div style={{ width: 380 }}>
           <Card size="small" title="Cliente" style={{ marginBottom: 16 }}>
-            <Input
-              placeholder="Nome do cliente (opcional)"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-            />
+            <ClientSelect value={client} onChange={setClient} />
             <Input.TextArea
               placeholder="Observações (opcional)"
               value={notes}

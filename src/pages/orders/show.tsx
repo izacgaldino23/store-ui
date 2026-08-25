@@ -106,7 +106,7 @@ export const OrdersShowPage = () => {
             </Tag>
           </Descriptions.Item>
           <Descriptions.Item label="Total">{formatCurrency(order.total_amount)}</Descriptions.Item>
-          <Descriptions.Item label="Cliente">{order.customer_name || '-'}</Descriptions.Item>
+          <Descriptions.Item label="Cliente">{order.client_name || '-'}</Descriptions.Item>
           <Descriptions.Item label="Observações">{order.notes || '-'}</Descriptions.Item>
           <Descriptions.Item label="Criado em">{formatDate(order.created_at)}</Descriptions.Item>
           <Descriptions.Item label="Atualizado em">{formatDate(order.updated_at)}</Descriptions.Item>

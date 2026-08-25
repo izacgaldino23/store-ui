@@ -1,7 +1,7 @@
 import { useTable, List } from '@refinedev/antd';
 import { type CrudFilter } from '@refinedev/core';
-import { Table, Tag, Button, Select, DatePicker } from 'antd';
-import { useState } from 'react';
+import { Table, Tag, Button, Select, DatePicker, Input } from 'antd';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Plus, Pencil, Printer } from 'lucide-react';
 import dayjs from 'dayjs';
@@ -19,20 +19,34 @@ export const OrdersListPage = () => {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
   const [hasPrintFilter, setHasPrintFilter] = useState<string | undefined>(undefined);
+  const [clientSearch, setClientSearch] = useState('');
+  const [debouncedClient, setDebouncedClient] = useState('');
 
   const { tableProps, setFilters } = useTable<IOrder>({
     resource: 'orders',
     pagination: { current: 1, pageSize: 10, mode: 'server' },
   });
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedClient(clientSearch), 400);
+    return () => clearTimeout(timer);
+  }, [clientSearch]);
+
+  useEffect(() => {
+    applyFilters(statusFilter, dateRange, hasPrintFilter, debouncedClient || undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedClient]);
+
   const applyFilters = (
     status?: string,
     dates?: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null,
-    hasPrint?: string
+    hasPrint?: string,
+    clientSearch?: string
   ) => {
     const f: CrudFilter[] = [];
     if (status) f.push({ field: 'status', operator: 'eq', value: status });
     if (hasPrint) f.push({ field: 'has_print', operator: 'eq', value: hasPrint });
+    if (clientSearch) f.push({ field: 'client_search', operator: 'eq', value: clientSearch });
     if (dates?.[0]) f.push({ field: 'start_date', operator: 'eq', value: dates[0].startOf('day').toISOString() });
     if (dates?.[1]) f.push({ field: 'end_date', operator: 'eq', value: dates[1].endOf('day').toISOString() });
     setFilters(f, 'replace');
@@ -55,7 +69,7 @@ export const OrdersListPage = () => {
           value={statusFilter}
           onChange={(value) => {
             setStatusFilter(value);
-            applyFilters(value, dateRange, hasPrintFilter);
+            applyFilters(value, dateRange, hasPrintFilter, debouncedClient || undefined);
           }}
           style={{ width: 180 }}
           options={statusFilterOptions}
@@ -66,7 +80,7 @@ export const OrdersListPage = () => {
           value={hasPrintFilter}
           onChange={(value) => {
             setHasPrintFilter(value);
-            applyFilters(statusFilter, dateRange, value);
+            applyFilters(statusFilter, dateRange, value, debouncedClient || undefined);
           }}
           style={{ width: 160 }}
           options={[
@@ -81,11 +95,19 @@ export const OrdersListPage = () => {
             applyFilters(
               statusFilter,
               dates as [dayjs.Dayjs | null, dayjs.Dayjs | null] | null,
-              hasPrintFilter
+              hasPrintFilter,
+              debouncedClient || undefined
             );
           }}
           format="DD/MM/YYYY"
           style={{ width: 260 }}
+        />
+        <Input.Search
+          placeholder="Buscar por cliente..."
+          allowClear
+          style={{ width: 220 }}
+          value={clientSearch}
+          onChange={(e) => setClientSearch(e.target.value)}
         />
       </div>
       <Table
@@ -105,7 +127,7 @@ export const OrdersListPage = () => {
           render={(id: string) => id.slice(0, 8) + '...'}
         />
         <Table.Column
-          dataIndex="customer_name"
+          dataIndex="client_name"
           title="Cliente"
           render={(val: string | undefined) => val || '-'}
         />

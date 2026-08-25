@@ -22,7 +22,8 @@ export interface IOrder {
   total_amount: number;
   status: string;
   notes?: string;
-  customer_name?: string;
+  client_id?: string;
+  client_name?: string;
   cancel_reason?: string;
   canceled_at?: string;
   created_at: string;
