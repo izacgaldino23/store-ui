@@ -105,7 +105,19 @@ export const OrdersShowPage = () => {
               {statusLabels[order.status] || order.status}
             </Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="Total">{formatCurrency(order.total_amount)}</Descriptions.Item>
+          <Descriptions.Item label="Total">
+            {order.discount_amount ? (
+              <>
+                Subtotal: {formatCurrency(order.subtotal_amount)}
+                <br />
+                Desconto: -{formatCurrency(order.discount_amount)}
+                <br />
+                <strong>Total: {formatCurrency(order.total_amount)}</strong>
+              </>
+            ) : (
+              formatCurrency(order.total_amount)
+            )}
+          </Descriptions.Item>
           <Descriptions.Item label="Cliente">{order.client_name || '-'}</Descriptions.Item>
           <Descriptions.Item label="Observações">{order.notes || '-'}</Descriptions.Item>
           <Descriptions.Item label="Criado em">{formatDate(order.created_at)}</Descriptions.Item>

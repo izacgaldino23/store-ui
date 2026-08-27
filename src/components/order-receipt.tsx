@@ -72,6 +72,18 @@ export const OrderReceipt = ({ order }: OrderReceiptProps) => {
         </div>
       ))}
       <hr style={dividerStyle} />
+      {order.discount_amount ? (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Subtotal</span>
+            <span>{formatCurrency(order.subtotal_amount)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Desconto</span>
+            <span>-{formatCurrency(order.discount_amount)}</span>
+          </div>
+        </>
+      ) : null}
       <div
         style={{
           display: 'flex',

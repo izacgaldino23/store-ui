@@ -19,6 +19,10 @@ export interface IOrder {
   items: IOrderItem[];
   prints?: IOrderPrint[];
   payments: IPayment[];
+  subtotal_amount?: number;
+  discount_type?: 'valor' | 'percentual';
+  discount_value?: number;
+  discount_amount?: number;
   total_amount: number;
   status: string;
   notes?: string;

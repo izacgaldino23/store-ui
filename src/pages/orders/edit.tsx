@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOne } from '@refinedev/core';
 import {
@@ -15,12 +15,14 @@ import {
   Tag,
   Spin,
   Alert,
+  Segmented,
 } from 'antd';
 import { Plus, Minus, Trash2, ArrowLeft, ReceiptText } from 'lucide-react';
 import apiClient from '../../providers/rest-client';
+import { useUnsavedOrderGuard } from '../../components/use-unsaved-order-guard';
 import { OrderReceiptModal } from '../../components/order-receipt-modal';
 import { ClientSelect, type ClientSelectValue } from '../../components/client-select';
-import { formatCurrency, paymentMethodOptions } from './constants';
+import { computeDiscountAmount, formatCurrency, paymentMethodOptions } from './constants';
 import { PrintsCard } from './prints-card';
 import { usePrintCatalog } from './print-catalog';
 import type { ICatalogItem, ICartItem, IOrder, IPayment, IPrintLine } from './types';
@@ -47,6 +49,8 @@ export const OrdersEditPage = () => {
   const [notes, setNotes] = useState('');
   const [loadingPrices, setLoadingPrices] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [discountType, setDiscountType] = useState<'valor' | 'percentual'>('valor');
+  const [discountValue, setDiscountValue] = useState<number>(0);
 
   const [pendingMethod, setPendingMethod] = useState<string | undefined>();
   const [pendingAmount, setPendingAmount] = useState<number>(0);
@@ -103,6 +107,8 @@ export const OrdersEditPage = () => {
         );
         setClient(order.client_id ? { id: order.client_id, name: order.client_name } : null);
         setNotes(order.notes || '');
+        setDiscountType(order.discount_type === 'percentual' ? 'percentual' : 'valor');
+        setDiscountValue(order.discount_value || 0);
       } finally {
         if (!cancelled) setLoadingPrices(false);
       }
@@ -148,8 +154,10 @@ export const OrdersEditPage = () => {
     return sum + Math.round(unit * 100) / 100 * (line.quantity || 0);
   }, 0);
   const grandTotal = orderTotal + printsTotal;
+  const discountAmount = computeDiscountAmount(grandTotal, discountType, discountValue);
+  const totalAfterDiscount = grandTotal - discountAmount;
   const paymentTotal = payments.reduce((sum, p) => sum + p.amount, 0);
-  const remaining = grandTotal - paymentTotal;
+  const remaining = totalAfterDiscount - paymentTotal;
 
   const isDraft = order?.status === 'rascunho';
   const notEditable = order && (order.status === 'entregue' || order.status === 'cancelado');
@@ -225,15 +233,59 @@ export const OrdersEditPage = () => {
     payments: payments.map((p) => ({ method: p.method, amount: p.amount })),
     client_id: client?.id || undefined,
     notes: notes || undefined,
+    discount_type: discountType,
+    discount_value: discountValue,
   });
 
   const paymentsCoverTotal = payments.length > 0 && Math.abs(remaining) <= 0.01;
   const hasValidPrints = prints.some((p) => p.print_paper_id);
   const hasContent = cart.length > 0 || hasValidPrints;
 
+  const isDirty = useMemo(() => {
+    if (!order) return cart.length > 0 || hasValidPrints || payments.length > 0 || !!client || notes.trim().length > 0 || discountValue > 0;
+    const cartSame =
+      order.items.length === cart.length &&
+      order.items.every(
+        (oi) =>
+          cart.some((c) => c.item_id === oi.item_id && c.quantity === oi.quantity)
+      );
+    const printsSame =
+      (order.prints?.length || 0) === prints.filter((p) => p.print_paper_id).length &&
+      (order.prints || []).every((op) =>
+        prints.some(
+          (p) =>
+            p.print_paper_id === op.print_paper_id &&
+            p.quantity === op.quantity &&
+            op.addons.length === p.addon_ids.length &&
+            op.addons.every((a) => p.addon_ids.includes(a.addon_id))
+        )
+      );
+    const paymentsSame =
+      order.payments.length === payments.length &&
+      order.payments.every((op) =>
+        payments.some((p) => p.method === op.method && p.amount === op.amount)
+      );
+    const clientSame = (order.client_id || null) === (client?.id || null);
+    const notesSame = (order.notes || '') === notes;
+    const discountSame =
+      (order.discount_type === 'percentual' ? 'percentual' : 'valor') === discountType &&
+      (order.discount_value || 0) === discountValue;
+    return !(cartSame && printsSame && paymentsSame && clientSame && notesSame && discountSame);
+  }, [order, cart, prints, payments, client, notes, discountType, discountValue, hasValidPrints]);
+
+  const { confirmLeave } = useUnsavedOrderGuard(isDirty);
+
+  const handleBack = async (fallbackPath: string) => {
+    if (await confirmLeave()) navigate(fallbackPath);
+  };
+
   const handleSave = async () => {
     if (!hasContent) {
       message.warning('Adicione pelo menos um item ou impressão ao pedido.');
+      return;
+    }
+    if (discountAmount > grandTotal) {
+      message.warning('O desconto não pode ser maior que o total do pedido.');
       return;
     }
     if (!isDraft && !paymentsCoverTotal) {
@@ -256,6 +308,10 @@ export const OrdersEditPage = () => {
   };
 
   const handleFinalize = async () => {
+    if (discountAmount > grandTotal) {
+      message.warning('O desconto não pode ser maior que o total do pedido.');
+      return;
+    }
     if (!paymentsCoverTotal) {
       message.warning('O total dos pagamentos deve ser igual ao total do pedido para finalizar.');
       return;
@@ -282,7 +338,7 @@ export const OrdersEditPage = () => {
     return (
       <div style={{ padding: 24 }}>
         <Space style={{ marginBottom: 16 }}>
-          <Button icon={<ArrowLeft size={16} />} onClick={() => navigate(`/orders/${id}`)}>
+          <Button icon={<ArrowLeft size={16} />} onClick={() => handleBack(`/orders/${id}`)}>
             Voltar
           </Button>
           {order.status !== 'cancelado' && (
@@ -310,7 +366,7 @@ export const OrdersEditPage = () => {
   return (
     <div style={{ padding: 24 }}>
       <Space style={{ marginBottom: 16 }}>
-        <Button icon={<ArrowLeft size={16} />} onClick={() => navigate(`/orders/${id}`)}>
+        <Button icon={<ArrowLeft size={16} />} onClick={() => handleBack(`/orders/${id}`)}>
           Voltar
         </Button>
         {order.status !== 'cancelado' && (
@@ -443,10 +499,16 @@ export const OrdersEditPage = () => {
                   <Text>Impressões: {formatCurrency(printsTotal)}</Text>
                 </>
               )}
+              {discountAmount > 0 && (
+                <>
+                  <br />
+                  <Text type="danger">Desconto: -{formatCurrency(discountAmount)}</Text>
+                </>
+              )}
               <br />
               <Text strong>Total: </Text>
               <Text strong style={{ fontSize: 18 }}>
-                {formatCurrency(grandTotal)}
+                {formatCurrency(totalAfterDiscount)}
               </Text>
             </div>
           </Card>
@@ -470,6 +532,33 @@ export const OrdersEditPage = () => {
               rows={2}
               style={{ marginTop: 8 }}
             />
+          </Card>
+
+          <Card size="small" title="Desconto" style={{ marginBottom: 16 }}>
+            <Segmented
+              block
+              options={[
+                { label: 'Valor (R$)', value: 'valor' },
+                { label: 'Percentual (%)', value: 'percentual' },
+              ]}
+              value={discountType}
+              onChange={(v) => setDiscountType(v as 'valor' | 'percentual')}
+            />
+            <InputNumber
+              style={{ width: '100%', marginTop: 8 }}
+              min={0}
+              max={discountType === 'percentual' ? 100 : undefined}
+              step={0.01}
+              prefix={discountType === 'percentual' ? '%' : 'R$'}
+              placeholder={discountType === 'percentual' ? 'Percentual (0-100)' : 'Valor em R$'}
+              value={discountValue}
+              onChange={(val) => setDiscountValue(val || 0)}
+            />
+            {discountAmount > 0 && (
+              <div style={{ textAlign: 'right', marginTop: 8 }}>
+                <Text type="danger">Desconto: -{formatCurrency(discountAmount)}</Text>
+              </div>
+            )}
           </Card>
 
           <Card size="small" title="Pagamentos" style={{ marginBottom: 16 }}>

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Table, Button, Input, Select, InputNumber, Space, Typography, message, Divider, Tag, Spin } from 'antd';
+import { Card, Table, Button, Input, Select, InputNumber, Space, Typography, message, Divider, Tag, Spin, Segmented } from 'antd';
 import { Plus, Minus, Trash2, ArrowLeft } from 'lucide-react';
 import apiClient from '../../providers/rest-client';
+import { useUnsavedOrderGuard } from '../../components/use-unsaved-order-guard';
 import { ClientSelect, type ClientSelectValue } from '../../components/client-select';
-import { formatCurrency, paymentMethodOptions } from './constants';
+import { computeDiscountAmount, formatCurrency, paymentMethodOptions } from './constants';
 import { PrintsCard } from './prints-card';
 import { usePrintCatalog } from './print-catalog';
 import type { ICatalogItem, ICartItem, IPayment, IPrintLine } from './types';
@@ -23,6 +24,8 @@ export const OrdersCreatePage = () => {
   const [client, setClient] = useState<ClientSelectValue | null>(null);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [discountType, setDiscountType] = useState<'valor' | 'percentual'>('valor');
+  const [discountValue, setDiscountValue] = useState<number>(0);
 
   const { papers: printPapers, addons: printAddons, loading: printCatalogLoading } =
     usePrintCatalog();
@@ -66,8 +69,24 @@ export const OrdersCreatePage = () => {
     return sum + Math.round(unit * 100) / 100 * (line.quantity || 0);
   }, 0);
   const grandTotal = orderTotal + printsTotal;
+  const discountAmount = computeDiscountAmount(grandTotal, discountType, discountValue);
+  const totalAfterDiscount = grandTotal - discountAmount;
   const paymentTotal = payments.reduce((sum, p) => sum + p.amount, 0);
-  const remaining = grandTotal - paymentTotal;
+  const remaining = totalAfterDiscount - paymentTotal;
+
+  const hasValidPrints = prints.some((p) => p.print_paper_id);
+  const isDirty =
+    cart.length > 0 ||
+    prints.some((p) => p.print_paper_id) ||
+    payments.length > 0 ||
+    !!client ||
+    notes.trim().length > 0 ||
+    discountValue > 0;
+  const { confirmLeave } = useUnsavedOrderGuard(isDirty);
+
+  const handleBack = async () => {
+    if (await confirmLeave()) navigate('/orders');
+  };
 
   const addToCart = (item: ICatalogItem) => {
     setCart((prev) => {
@@ -134,10 +153,19 @@ export const OrdersCreatePage = () => {
         addon_ids: p.addon_ids,
       }));
 
+  const buildDiscountPayload = () => ({
+    discount_type: discountType,
+    discount_value: discountValue,
+  });
+
   const handleSaveDraft = async () => {
     const printsPayload = buildPrintsPayload();
     if (cart.length === 0 && printsPayload.length === 0) {
       message.warning('Adicione pelo menos um item ou impressão ao pedido.');
+      return;
+    }
+    if (discountAmount > grandTotal) {
+      message.warning('O desconto não pode ser maior que o total do pedido.');
       return;
     }
 
@@ -150,6 +178,7 @@ export const OrdersCreatePage = () => {
         client_id: client?.id || undefined,
         notes: notes || undefined,
         status: 'rascunho',
+        ...buildDiscountPayload(),
       };
       await apiClient.post('/orders', payload);
       message.success('Rascunho salvo com sucesso!');
@@ -172,6 +201,10 @@ export const OrdersCreatePage = () => {
       message.warning('Adicione pelo menos uma forma de pagamento.');
       return;
     }
+    if (discountAmount > grandTotal) {
+      message.warning('O desconto não pode ser maior que o total do pedido.');
+      return;
+    }
     if (Math.abs(remaining) > 0.01) {
       message.warning('O total dos pagamentos deve ser igual ao total do pedido.');
       return;
@@ -185,6 +218,7 @@ export const OrdersCreatePage = () => {
         payments: payments.map((p) => ({ method: p.method, amount: p.amount })),
         client_id: client?.id || undefined,
         notes: notes || undefined,
+        ...buildDiscountPayload(),
       };
       await apiClient.post('/orders', payload);
       message.success('Pedido criado com sucesso!');
@@ -197,12 +231,10 @@ export const OrdersCreatePage = () => {
     }
   };
 
-  const hasValidPrints = prints.some((p) => p.print_paper_id);
-
   return (
     <div style={{ padding: 24 }}>
       <Space style={{ marginBottom: 16 }}>
-        <Button icon={<ArrowLeft size={16} />} onClick={() => navigate('/orders')}>
+        <Button icon={<ArrowLeft size={16} />} onClick={handleBack}>
           Voltar
         </Button>
       </Space>
@@ -331,10 +363,16 @@ export const OrdersCreatePage = () => {
                   <Text>Impressões: {formatCurrency(printsTotal)}</Text>
                 </>
               )}
+              {discountAmount > 0 && (
+                <>
+                  <br />
+                  <Text type="danger">Desconto: -{formatCurrency(discountAmount)}</Text>
+                </>
+              )}
               <br />
               <Text strong>Total: </Text>
               <Text strong style={{ fontSize: 18 }}>
-                {formatCurrency(grandTotal)}
+                {formatCurrency(totalAfterDiscount)}
               </Text>
             </div>
           </Card>
@@ -358,6 +396,33 @@ export const OrdersCreatePage = () => {
               rows={2}
               style={{ marginTop: 8 }}
             />
+          </Card>
+
+          <Card size="small" title="Desconto" style={{ marginBottom: 16 }}>
+            <Segmented
+              block
+              options={[
+                { label: 'Valor (R$)', value: 'valor' },
+                { label: 'Percentual (%)', value: 'percentual' },
+              ]}
+              value={discountType}
+              onChange={(v) => setDiscountType(v as 'valor' | 'percentual')}
+            />
+            <InputNumber
+              style={{ width: '100%', marginTop: 8 }}
+              min={0}
+              max={discountType === 'percentual' ? 100 : undefined}
+              step={0.01}
+              prefix={discountType === 'percentual' ? '%' : 'R$'}
+              placeholder={discountType === 'percentual' ? 'Percentual (0-100)' : 'Valor em R$'}
+              value={discountValue}
+              onChange={(val) => setDiscountValue(val || 0)}
+            />
+            {discountAmount > 0 && (
+              <div style={{ textAlign: 'right', marginTop: 8 }}>
+                <Text type="danger">Desconto: -{formatCurrency(discountAmount)}</Text>
+              </div>
+            )}
           </Card>
 
           <Card size="small" title="Pagamentos" style={{ marginBottom: 16 }}>

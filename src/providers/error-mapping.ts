@@ -28,6 +28,7 @@ export const errorMessages: Record<string, string> = {
   order_not_editable: 'Este pedido não pode ser editado. Apenas rascunhos, pendentes, em produção ou prontos podem ser alterados.',
   payment_mismatch: 'Valor total dos pagamentos não corresponde ao total do pedido.',
   insufficient_stock: 'Estoque insuficiente para um ou mais itens.',
+  invalid_discount: 'Desconto inválido. Verifique se o valor não excede o subtotal do pedido.',
   print_paper_not_found: 'Papel de impressão não encontrado.',
   print_addon_not_found: 'Adicional de impressão não encontrado.',
   print_paper_conflict: 'Já existe um papel vinculado a este item do catálogo.',

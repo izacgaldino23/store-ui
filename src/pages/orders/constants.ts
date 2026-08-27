@@ -42,6 +42,26 @@ export const paymentMethodOptions = Object.entries(paymentMethodLabels).map(([va
   label,
 }));
 
+export const discountTypeOptions: { value: 'valor' | 'percentual'; label: string }[] = [
+  { value: 'valor', label: 'Valor (R$)' },
+  { value: 'percentual', label: 'Percentual (%)' },
+];
+
+// Returns the discount amount (rounded to 2 decimals) over the subtotal.
+// A value <= 0 or an empty subtotal yields no discount.
+export function computeDiscountAmount(
+  subtotal: number,
+  type: 'valor' | 'percentual',
+  value: number
+): number {
+  if (!value || value <= 0 || subtotal <= 0) return 0;
+  if (type === 'percentual') {
+    const raw = (subtotal * value) / 100;
+    return Math.round(raw * 100) / 100;
+  }
+  return Math.round(value * 100) / 100;
+}
+
 export function formatCurrency(value?: number | null): string {
   if (value == null) return '-';
   return new Intl.NumberFormat('pt-BR', {
