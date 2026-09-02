@@ -24,7 +24,7 @@ import { OrderReceiptModal } from '../../components/order-receipt-modal';
 import { ClientSelect, type ClientSelectValue } from '../../components/client-select';
 import { computeDiscountAmount, formatCurrency, paymentMethodOptions } from './constants';
 import { PrintsCard } from './prints-card';
-import { usePrintCatalog } from './print-catalog';
+import { computePrintUnitPrice, usePrintCatalog } from './print-catalog';
 import type { ICatalogItem, ICartItem, IOrder, IPayment, IPrintLine } from './types';
 
 const { Title, Text } = Typography;
@@ -144,14 +144,8 @@ export const OrdersEditPage = () => {
     const paper = printPapers.find((p) => p.id === line.print_paper_id);
     if (!paper) return sum;
     const selected = printAddons.filter((a) => line.addon_ids.includes(a.id));
-    let unit = paper.price_per_sheet;
-    let percentSum = 0;
-    for (const addon of selected) {
-      if (addon.price_type === 'fixed') unit += addon.price_value;
-      else percentSum += addon.price_value;
-    }
-    unit += unit * (percentSum / 100);
-    return sum + Math.round(unit * 100) / 100 * (line.quantity || 0);
+    const unit = computePrintUnitPrice(paper, selected);
+    return sum + unit * (line.quantity || 0);
   }, 0);
   const grandTotal = orderTotal + printsTotal;
   const discountAmount = computeDiscountAmount(grandTotal, discountType, discountValue);

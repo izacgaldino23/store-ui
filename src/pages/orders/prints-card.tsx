@@ -110,6 +110,12 @@ export const PrintsCard = ({ value, onChange, papers, addons, loading }: PrintsC
             )}
           />
           <Table.Column
+            title="Valor Unit."
+            width={100}
+            align="right"
+            render={(_, record: IPrintLine) => formatCurrency(lineUnitPrice(record))}
+          />
+          <Table.Column
             title="Total"
             width={110}
             align="right"

@@ -50,6 +50,6 @@ export const computePrintUnitPrice = (
       percentSum += addon.price_value;
     }
   }
-  total += total * (percentSum / 100);
+  total += paper.price_per_sheet * (percentSum / 100);
   return Math.round(total * 100) / 100;
 };

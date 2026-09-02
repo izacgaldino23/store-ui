@@ -84,6 +84,7 @@ Listas de papers/addons retornam `{ papers: [] }` / `{ addons: [] }` — já tra
 - `create.tsx` and `edit.tsx` are ~90% duplicated and do **not** use antd `Form`/Refine `useCreate` — 100% `useState` + `apiClient`. Any change must be made in **both** files.
 - Discount (NF-005): `discountType` (`valor`|`percentual`) + `discountValue` state; `computeDiscountAmount(subtotal, type, value)` in `constants.ts`; `remaining` is computed against `totalAfterDiscount` (subtotal − discount). Payloads include `discount_type`/`discount_value`. Client-side guard: warn if `discountAmount > grandTotal`.
 - Unsaved-order guard (NF-005): `useUnsavedOrderGuard(isDirty)` in `src/components/use-unsaved-order-guard.ts` registers a native `beforeunload` (reload/close/external nav) and exposes `confirmLeave()` used by the "Voltar" buttons (Modal.confirm). `create.tsx` computes `isDirty` from "any content"; `edit.tsx` computes a diff against the loaded order. App uses classic `<BrowserRouter>` (no data router), so SPA navigation is guarded only via the intercepted Voltar clicks — not the side menu.
+- Print pricing (ME-003): print unit price MUST be computed via `computePrintUnitPrice` (`print-catalog.ts`) — percentage addons apply ONLY over the paper base price (never over base+fixed), matching the backend `ComputeUnitPrice`. `create.tsx`/`edit.tsx` use it for `printsTotal`; `prints-card.tsx` shows a "Valor Unit." column per print line.
 
 ## Conventions
 
