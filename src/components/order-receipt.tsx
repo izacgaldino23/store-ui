@@ -60,6 +60,9 @@ export const OrderReceipt = ({ order }: OrderReceiptProps) => {
       {(order.prints || []).map((print) => (
         <div key={print.id} style={{ marginBottom: 6, breakInside: 'avoid' }}>
           <div>Impressão: {print.paper_name}</div>
+          {print.description && (
+            <div style={{ fontSize: 11 }}>{print.description}</div>
+          )}
           {print.addons.length > 0 && (
             <div style={{ fontSize: 11 }}>{print.addons.map((a) => a.name).join(', ')}</div>
           )}

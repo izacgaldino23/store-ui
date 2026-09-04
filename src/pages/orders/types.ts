@@ -80,6 +80,7 @@ export interface IOrderPrint {
   id: string;
   print_paper_id: string;
   paper_name: string;
+  description?: string;
   quantity: number;
   addons: IOrderPrintAddon[];
   unit_price: number;
@@ -88,6 +89,7 @@ export interface IOrderPrint {
 
 export interface IPrintLine {
   print_paper_id?: string;
+  description?: string;
   quantity: number;
   addon_ids: string[];
 }

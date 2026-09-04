@@ -216,6 +216,11 @@ export const OrdersShowPage = () => {
           >
             <Table.Column dataIndex="paper_name" title="Papel" />
             <Table.Column
+              dataIndex="description"
+              title="Descrição"
+              render={(val: string) => val || '-'}
+            />
+            <Table.Column
               dataIndex="addons"
               title="Adicionais"
               render={(addons: IOrderPrintAddon[]) =>

@@ -1,4 +1,4 @@
-import { Card, Table, Button, Select, InputNumber, Space, Typography } from 'antd';
+import { Card, Table, Button, Select, Input, InputNumber, Space, Typography } from 'antd';
 import { Plus, Trash2, Printer } from 'lucide-react';
 import { formatCurrency } from './constants';
 import { computePrintUnitPrice } from './print-catalog';
@@ -106,6 +106,18 @@ export const PrintsCard = ({ value, onChange, papers, addons, loading }: PrintsC
                       : `+${a.price_value}%`
                   })`,
                 }))}
+              />
+            )}
+          />
+          <Table.Column
+            title="Descrição"
+            width={180}
+            render={(_, record: IPrintLine, index: number) => (
+              <Input
+                placeholder="Opcional"
+                maxLength={255}
+                value={record.description}
+                onChange={(e) => updateLine(index, { description: e.target.value || undefined })}
               />
             )}
           />

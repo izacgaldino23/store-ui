@@ -143,6 +143,7 @@ export const OrdersCreatePage = () => {
       .filter((p) => p.print_paper_id)
       .map((p) => ({
         print_paper_id: p.print_paper_id as string,
+        description: p.description || undefined,
         quantity: p.quantity,
         addon_ids: p.addon_ids,
       }));

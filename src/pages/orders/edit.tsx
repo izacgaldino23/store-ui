@@ -101,6 +101,7 @@ export const OrdersEditPage = () => {
         setPrints(
           (order.prints || []).map((p) => ({
             print_paper_id: p.print_paper_id,
+            description: p.description,
             quantity: p.quantity,
             addon_ids: p.addons.map((a) => a.addon_id),
           }))
@@ -217,6 +218,7 @@ export const OrdersEditPage = () => {
       .filter((p) => p.print_paper_id)
       .map((p) => ({
         print_paper_id: p.print_paper_id as string,
+        description: p.description || undefined,
         quantity: p.quantity,
         addon_ids: p.addon_ids,
       }));
@@ -249,6 +251,7 @@ export const OrdersEditPage = () => {
         prints.some(
           (p) =>
             p.print_paper_id === op.print_paper_id &&
+            (p.description || '') === (op.description || '') &&
             p.quantity === op.quantity &&
             op.addons.length === p.addon_ids.length &&
             op.addons.every((a) => p.addon_ids.includes(a.addon_id))
