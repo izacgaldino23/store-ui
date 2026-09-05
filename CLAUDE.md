@@ -31,7 +31,7 @@ store-ui/
 │   │   └── cash-flow/           # caixa atual, relatório, histórico, despesas
 │   ├── components/
 │   │   ├── logo.tsx
-│   │   └── sider.tsx             # custom AppSider: replaces ThemedSiderV2; groups always open (controlled openKeys, ME-002); easy revert = use ThemedSiderV2 in App.tsx again
+│   │   └── sider.tsx             # custom AppSider: replaces ThemedSiderV2; groups always open (controlled openKeys, ME-002); sections (Geral/Vendas & Caixa/Cadastros) via resources meta.section + MENU_SECTIONS in sider.tsx; CONTA+Logout isolated in fixed footer; subitems with bullet + connector line + pink left border (NF-006, sider.css); easy revert = use ThemedSiderV2 in App.tsx again
 │   ├── config.ts
 │   ├── App.tsx
 │   └── index.tsx

@@ -1,3 +1,124 @@
 .app-sider .ant-menu-inline .ant-menu-submenu-arrow {
   display: none;
 }
+
+/* Fase superior: labels das seções (caixa alta, cinza, discretas) */
+.app-sider .ant-menu-item-group-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(0, 0, 0, 0.45);
+  padding: 16px 24px 4px;
+  line-height: 1.4;
+}
+
+.app-sider .ant-menu-item-group:first-child .ant-menu-item-group-title {
+  padding-top: 8px;
+}
+
+/* Hierarquia: pais 14px Medium, categorias organizadoras */
+.app-sider .ant-menu-submenu-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Subitens: indentados, 13px Regular, sem fundo cinza solto */
+.app-sider .ant-menu-sub.ant-menu-inline {
+  background: transparent;
+  position: relative;
+}
+
+/* Linha vertical fina conectando o grupo de subitens */
+.app-sider .ant-menu-sub.ant-menu-inline::before {
+  content: '';
+  position: absolute;
+  left: 28px;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: #d9d9d9;
+}
+
+.app-sider .ant-menu-sub.ant-menu-inline .ant-menu-item {
+  font-size: 13px;
+  font-weight: 400;
+  height: 38px;
+  line-height: 38px;
+  padding-left: 52px !important;
+}
+
+.app-sider .sider-bullet {
+  color: #bfbfbf;
+  font-size: 10px;
+  margin-right: 8px;
+}
+
+/* Estado ativo dos subitens: borda esquerda rosa + fundo sutil */
+.app-sider
+  .ant-menu-sub.ant-menu-inline
+  .ant-menu-item-selected {
+  color: #e879a8;
+  background-color: rgba(232, 121, 168, 0.08);
+}
+
+.app-sider
+  .ant-menu-sub.ant-menu-inline
+  .ant-menu-item-selected::after {
+  border-right: none;
+  border-left: 3px solid #e879a8;
+  left: 0;
+  right: auto;
+}
+
+.app-sider
+  .ant-menu-sub.ant-menu-inline
+  .ant-menu-item-selected:hover {
+  background-color: rgba(232, 121, 168, 0.08);
+}
+
+/* Rodapé fixo: seção CONTA isolada do fluxo de trabalho */
+.sider-footer {
+  border-top: 1px solid rgba(5, 5, 5, 0.06);
+  padding: 12px 16px;
+}
+
+.sider-footer-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(0, 0, 0, 0.45);
+  margin-bottom: 4px;
+}
+
+.sider-logout-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.75);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.sider-logout-button:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+  color: #e879a8;
+}
+
+/* Sider colapsado (80px): rodapé só com o ícone centralizado */
+.ant-layout-sider-collapsed .sider-footer {
+  padding: 12px 0;
+}
+
+.sider-logout-button.collapsed {
+  justify-content: center;
+  padding: 8px 0;
+}

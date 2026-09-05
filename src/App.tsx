@@ -50,55 +50,23 @@ function App() {
           {
             name: 'dashboard',
             list: '/',
-            meta: { icon: <LayoutDashboard size={20} />, label: 'Visão Geral' },
+            meta: { icon: <LayoutDashboard size={20} />, label: 'Visão Geral', section: 'geral' },
           },
-          {
-            name: 'catalog',
-            meta: { icon: <Package size={20} />, label: 'Catálogo' },
-          },
-          {
-            name: 'items',
-            list: '/items',
-            meta: { parent: 'catalog', label: 'Itens', canDelete: true },
-          },
-          {
-            name: 'printing',
-            list: '/printing',
-            meta: { parent: 'catalog', label: 'Impressão' },
-          },
-          {
-            name: 'clients',
-            list: '/clients',
-            meta: { icon: <Users size={20} />, label: 'Clientes', canDelete: true },
-          },
-
           {
             name: 'orders',
             list: '/orders',
             create: '/orders/create',
             edit: '/orders/:id/edit',
             show: '/orders/:id',
-            meta: { icon: <ShoppingCart size={20} />, label: 'Pedidos' },
-          },
-          {
-            name: 'pricing',
-            meta: { icon: <Tag size={20} />, label: 'Preços', hide: true },
-          },
-          {
-            name: 'price-table',
-            list: '/pricing/table',
-            create: '/pricing/table/create',
-            edit: '/pricing/table/:id/edit',
-            meta: { parent: 'pricing', label: 'Tabela de Preços', hide: true },
-          },
-          {
-            name: 'calculator',
-            list: '/pricing/calculator',
-            meta: { parent: 'pricing', label: 'Calculadora de Margem', hide: true },
+            meta: {
+              icon: <ShoppingCart size={20} />,
+              label: 'Pedidos',
+              section: 'vendas',
+            },
           },
           {
             name: 'cash',
-            meta: { icon: <Wallet size={20} />, label: 'Caixa' },
+            meta: { icon: <Wallet size={20} />, label: 'Caixa', section: 'vendas' },
           },
           {
             name: 'cash-register',
@@ -119,6 +87,46 @@ function App() {
             name: 'expenses',
             list: '/cash-flow/expenses',
             meta: { parent: 'cash', label: 'Despesas' },
+          },
+          {
+            name: 'catalog',
+            meta: { icon: <Package size={20} />, label: 'Catálogo', section: 'cadastros' },
+          },
+          {
+            name: 'items',
+            list: '/items',
+            meta: { parent: 'catalog', label: 'Itens', canDelete: true },
+          },
+          {
+            name: 'printing',
+            list: '/printing',
+            meta: { parent: 'catalog', label: 'Impressão' },
+          },
+          {
+            name: 'clients',
+            list: '/clients',
+            meta: {
+              icon: <Users size={20} />,
+              label: 'Clientes',
+              canDelete: true,
+              section: 'cadastros',
+            },
+          },
+          {
+            name: 'pricing',
+            meta: { icon: <Tag size={20} />, label: 'Preços', hide: true },
+          },
+          {
+            name: 'price-table',
+            list: '/pricing/table',
+            create: '/pricing/table/create',
+            edit: '/pricing/table/:id/edit',
+            meta: { parent: 'pricing', label: 'Tabela de Preços', hide: true },
+          },
+          {
+            name: 'calculator',
+            list: '/pricing/calculator',
+            meta: { parent: 'pricing', label: 'Calculadora de Margem', hide: true },
           },
         ]}
       >

@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { Drawer, Grid, Layout, Menu, Button, theme } from 'antd';
 import {
   BarsOutlined,
-  DashboardOutlined,
   LeftOutlined,
   LogoutOutlined,
   RightOutlined,
@@ -15,7 +14,6 @@ import {
   useIsExistAuthentication,
   useLogout,
   useMenu,
-  useRefineContext,
   useTranslate,
   useWarnAboutChange,
 } from '@refinedev/core';
@@ -31,6 +29,12 @@ const floatingActionButtonStyles: React.CSSProperties = {
   top: 64,
   zIndex: 999,
 };
+
+const MENU_SECTIONS: { key: string; title: string }[] = [
+  { key: 'geral', title: 'Geral' },
+  { key: 'vendas', title: 'Vendas & Caixa' },
+  { key: 'cadastros', title: 'Cadastros' },
+];
 
 export const AppSider = ({
   Title,
@@ -51,7 +55,6 @@ export const AppSider = ({
   const TitleFromContext = useTitle();
   const { menuItems, selectedKey } = useMenu({ meta });
   const breakpoint = Grid.useBreakpoint();
-  const { hasDashboard } = useRefineContext();
   const activeAuthProvider = useActiveAuthProvider();
   const { mutate: logout } = useLogout({
     v3LegacyAuthProviderCompatible: !!(activeAuthProvider?.isLegacy),
@@ -92,10 +95,9 @@ export const AppSider = ({
       }
 
       const isSelected = key === selected;
-      const showIcon = !(
-        pickNotDeprecated(itemMeta?.parent, options?.parent, item.parentName) !== undefined &&
-        children.length === 0
-      );
+      const isChild =
+        pickNotDeprecated(itemMeta?.parent, options?.parent, item.parentName) !== undefined;
+      const showIcon = !(isChild && children.length === 0);
       const linkStyle: React.CSSProperties =
         activeItemDisabled && isSelected ? { pointerEvents: 'none' } : {};
 
@@ -107,11 +109,9 @@ export const AppSider = ({
             style={linkStyle}
           >
             <Link to={route ?? ''} style={linkStyle}>
+              {isChild && <span className="sider-bullet">•</span>}
               {label}
             </Link>
-            {!siderCollapsed && isSelected && (
-              <div className="ant-menu-tree-arrow" />
-            )}
           </Menu.Item>
         </CanAccess>
       );
@@ -131,51 +131,67 @@ export const AppSider = ({
     logout();
   };
 
-  const logoutItem = hasAuth && (
-    <Menu.Item key="logout" onClick={handleLogout} icon={<LogoutOutlined />}>
-      {translate('buttons.logout', 'Logout')}
-    </Menu.Item>
-  );
+  const renderLogoutControl = (collapsedB: boolean) =>
+    hasAuth && (
+      <div className="sider-footer">
+        {!collapsedB && <div className="sider-footer-title">CONTA</div>}
+        <button
+          type="button"
+          className={`sider-logout-button${collapsedB ? ' collapsed' : ''}`}
+          onClick={() => {
+            setMobileSiderOpen(false);
+            handleLogout();
+          }}
+        >
+          <LogoutOutlined />
+          {!collapsedB && (
+            <span className="sider-logout-label">
+              {translate('buttons.logout', 'Logout')}
+            </span>
+          )}
+        </button>
+      </div>
+    );
 
-  const dashboardItem = hasDashboard ? (
-    <Menu.Item key="dashboard" icon={<DashboardOutlined />}>
-      <Link to="/">{translate('dashboard.title', 'Dashboard')}</Link>
-      {!siderCollapsed && selectedKey === '/' && <div className="ant-menu-tree-arrow" />}
-    </Menu.Item>
-  ) : null;
-
-  const renderSider = () => {
+  const renderSider = (collapsedB: boolean) => {
     if (render) {
       return render({
-        dashboard: dashboardItem,
         items: renderTreeView(menuItems, selectedKey),
-        logout: logoutItem,
+        logout: renderLogoutControl(siderCollapsed),
+        dashboard: null,
         collapsed: siderCollapsed,
       });
     }
+    if (collapsedB) {
+      return <>{renderTreeView(menuItems, selectedKey)}</>;
+    }
     return (
       <>
-        {dashboardItem}
-        {renderTreeView(menuItems, selectedKey)}
-        {logoutItem}
+        {MENU_SECTIONS.map((section) => {
+          const sectionItems = menuItems.filter(
+            (item) => (item.meta as { section?: string })?.section === section.key
+          );
+          if (sectionItems.length === 0) return null;
+          return (
+            <Menu.ItemGroup key={section.key} title={section.title}>
+              {renderTreeView(sectionItems, selectedKey)}
+            </Menu.ItemGroup>
+          );
+        })}
       </>
     );
   };
 
-  const renderMenu = () => (
+  const renderMenu = (collapsedB: boolean) => (
     <Menu
       selectedKeys={selectedKey ? [selectedKey] : []}
-      openKeys={openKeys}
+      openKeys={collapsedB ? [] : openKeys}
       mode="inline"
-      style={{
-        paddingTop: '8px',
-        border: 'none',
-        overflow: 'auto',
-        height: 'calc(100% - 72px)',
-      }}
+      inlineCollapsed={collapsedB}
+      style={{ paddingTop: '8px', border: 'none', minHeight: 0 }}
       onClick={() => setMobileSiderOpen(false)}
     >
-      {renderSider()}
+      {renderSider(collapsedB)}
     </Menu>
   );
 
@@ -196,19 +212,26 @@ export const AppSider = ({
             style={{ height: '100vh', backgroundColor: token.colorBgContainer }}
           >
             <div
-              style={{
-                width: 200,
-                padding: '0 16px',
-                display: 'flex',
-                justifyContent: 'flex-start',
-                alignItems: 'center',
-                height: 64,
-                backgroundColor: token.colorBgElevated,
-              }}
+              style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
             >
-              <RenderTitle collapsed={false} />
+              <div
+                style={{
+                  width: 200,
+                  padding: '0 16px',
+                  display: 'flex',
+                  justifyContent: 'flex-start',
+                  alignItems: 'center',
+                  height: 64,
+                  backgroundColor: token.colorBgElevated,
+                }}
+              >
+                <RenderTitle collapsed={false} />
+              </div>
+              <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                {renderMenu(false)}
+              </div>
+              {renderLogoutControl(false)}
             </div>
-            {renderMenu()}
           </Layout.Sider>
         </Layout>
       </Drawer>
@@ -274,21 +297,33 @@ export const AppSider = ({
           </Button>
         }
       >
-        <div
-          style={{
-            width: siderCollapsed ? 80 : 200,
-            padding: siderCollapsed ? 0 : '0 16px',
-            display: 'flex',
-            justifyContent: siderCollapsed ? 'center' : 'flex-start',
-            alignItems: 'center',
-            height: 64,
-            backgroundColor: token.colorBgElevated,
-            fontSize: 14,
-          }}
-        >
-          <RenderTitle collapsed={siderCollapsed} />
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div
+            style={{
+              width: siderCollapsed ? 80 : 200,
+              padding: siderCollapsed ? 0 : '0 16px',
+              display: 'flex',
+              justifyContent: siderCollapsed ? 'center' : 'flex-start',
+              alignItems: 'center',
+              height: 64,
+              backgroundColor: token.colorBgElevated,
+              fontSize: 14,
+            }}
+          >
+            <RenderTitle collapsed={siderCollapsed} />
+          </div>
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflow: 'auto',
+              width: '100%',
+            }}
+          >
+            {renderMenu(siderCollapsed)}
+          </div>
+          {renderLogoutControl(siderCollapsed)}
         </div>
-        {renderMenu()}
       </Layout.Sider>
     </>
   );

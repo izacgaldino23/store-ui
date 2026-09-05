@@ -8,14 +8,6 @@ export const themeConfig: ThemeConfig = {
     colorSuccess: '#6B8E23',
     borderRadius: 6,
   },
-  components: {
-    Menu: {
-      darkItemBg: '#2D1B2E',
-      darkItemColor: '#F5E6F0',
-      darkItemSelectedBg: '#E879A833',
-      darkItemSelectedColor: '#E879A8',
-    },
-  },
 };
 
 export const renderEmpty = (): ReactNode => (
