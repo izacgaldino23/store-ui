@@ -90,12 +90,14 @@ export const PrintsCard = ({ value, onChange, papers, addons, loading }: PrintsC
           />
           <Table.Column
             title="Adicionais"
+            width={200}
             render={(_, record: IPrintLine, index: number) => (
               <Select
                 mode="multiple"
                 allowClear
                 placeholder="Opcional"
                 style={{ width: '100%' }}
+                maxTagCount="responsive"
                 value={record.addon_ids}
                 onChange={(vals) => updateLine(index, { addon_ids: vals })}
                 options={addons.map((a) => ({

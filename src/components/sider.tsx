@@ -2,9 +2,9 @@ import React, { useMemo } from 'react';
 import { Drawer, Grid, Layout, Menu, Button, theme } from 'antd';
 import {
   BarsOutlined,
-  LeftOutlined,
   LogoutOutlined,
-  RightOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
 import {
@@ -261,10 +261,13 @@ export const AppSider = ({
 
   const renderClosingIcons = () => {
     const iconStyle = { color: token.colorPrimary };
+    // M-001: botao sanfonar — o closure estava invertido (colapsado mostrava "esquerda",
+    // expandido mostrava "direita"). Trocado para o par fold/unfold com orientacao correta:
+    // colapsado => MenuUnfoldOutlined (clique expande); expandido => MenuFoldOutlined (clique colapsa).
     return siderCollapsed ? (
-      <LeftOutlined {...iconStyle} />
+      <MenuUnfoldOutlined {...iconStyle} />
     ) : (
-      <RightOutlined {...iconStyle} />
+      <MenuFoldOutlined {...iconStyle} />
     );
   };
 
