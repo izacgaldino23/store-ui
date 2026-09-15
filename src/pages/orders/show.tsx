@@ -223,6 +223,8 @@ export const OrdersShowPage = () => {
             <Table.Column
               dataIndex="addons"
               title="Adicionais"
+              width={250}
+              ellipsis
               render={(addons: IOrderPrintAddon[]) =>
                 addons && addons.length > 0 ? addons.map((a) => a.name).join(', ') : '-'
               }
