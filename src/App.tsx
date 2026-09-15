@@ -3,6 +3,7 @@ import { ThemedLayoutV2, useNotificationProvider } from '@refinedev/antd';
 import routerBindings from '@refinedev/react-router-v6';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import {
+  BarChart3,
   LayoutDashboard,
   Package,
   ShoppingCart,
@@ -35,6 +36,7 @@ import { CashFlowCurrentPage } from './pages/cash-flow/current';
 import { DailyReportPage } from './pages/cash-flow/daily-report';
 import { CashFlowHistoryPage } from './pages/cash-flow/history';
 import { ExpensesPage } from './pages/cash-flow/expenses';
+import { ReportsPage } from './pages/reports';
 
 function App() {
   return (
@@ -63,6 +65,11 @@ function App() {
               label: 'Pedidos',
               section: 'vendas',
             },
+          },
+          {
+            name: 'reports',
+            list: '/reports',
+            meta: { icon: <BarChart3 size={20} />, label: 'Relatórios', section: 'vendas' },
           },
           {
             name: 'cash',
@@ -148,6 +155,7 @@ function App() {
             <Route path="/orders/create" element={<OrdersCreatePage />} />
             <Route path="/orders/:id/edit" element={<OrdersEditPage />} />
             <Route path="/orders/:id" element={<OrdersShowPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
             <Route path="/pricing/table" element={<PriceTableListPage />} />
             <Route path="/pricing/table/create" element={<PriceTableCreatePage />} />
             <Route path="/pricing/table/:id/edit" element={<PriceTableEditPage />} />
