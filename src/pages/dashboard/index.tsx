@@ -107,7 +107,7 @@ export const DashboardPage = () => {
               value={sc.count}
               prefix={display.icon}
               loading={loading}
-              onClick={() => navigate('/orders')}
+              onClick={() => navigate(`/orders?status=${sc.status}`)}
             />
           );
         })}
@@ -117,7 +117,7 @@ export const DashboardPage = () => {
           prefix={<Package size={20} />}
           color={lowStockCount > 0 ? '#faad14' : '#6B8E23'}
           loading={loading}
-          onClick={() => navigate('/items')}
+          onClick={() => navigate('/items?tab=low-stock')}
         />
       </Row>
 

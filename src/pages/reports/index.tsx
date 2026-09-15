@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, Col, Row, Statistic, Typography, Skeleton, Tabs, Table, DatePicker, Segmented, message } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import {
@@ -10,6 +10,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import apiClient from '../../providers/rest-client';
+import { useSearchParams } from 'react-router-dom';
 
 const { Title } = Typography;
 
@@ -38,6 +39,18 @@ const startOfWeek = (d: Dayjs): Dayjs => {
   const daysSinceMonday = (d.day() + 6) % 7; // day(): 0=Dom ... 6=Sáb
   return d.subtract(daysSinceMonday, 'day').startOf('day');
 };
+
+const PRESET_LABELS: Record<string, string> = {
+  diario: 'Diário',
+  semanal: 'Semanal',
+  mensal: 'Mensal',
+  anual: 'Anual',
+  custom: 'Personalizado',
+};
+
+const PRESET_KEYS: Record<string, string> = Object.fromEntries(
+  Object.entries(PRESET_LABELS).map(([k, v]) => [v, k])
+);
 
 const PRESET_OPTIONS = ['Diário', 'Semanal', 'Mensal', 'Anual', 'Personalizado'];
 
@@ -89,8 +102,22 @@ const STATUS_LABELS: Record<string, string> = {
 
 export const ReportsPage = () => {
   const [loading, setLoading] = useState(true);
-  const [preset, setPreset] = useState('Mensal');
-  const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs().endOf('day')]);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const { preset, range } = useMemo(() => {
+    const period = searchParams.get('period');
+    const start = searchParams.get('start');
+    const end = searchParams.get('end');
+    if (start && end) {
+      const s = dayjs(start, 'YYYY-MM-DD');
+      const e = dayjs(end, 'YYYY-MM-DD');
+      if (s.isValid() && e.isValid() && !s.isAfter(e)) {
+        const label = period === 'custom' ? 'Personalizado' : PRESET_LABELS[period ?? ''];
+        if (label) return { preset: label, range: [s, e] as [Dayjs, Dayjs] };
+      }
+    }
+    return { preset: 'Mensal', range: [dayjs().startOf('month'), dayjs().endOf('day')] as [Dayjs, Dayjs] };
+  }, [searchParams]);
   const [summary, setSummary] = useState<IOrdersSummary | null>(null);
   const [products, setProducts] = useState<IProductsReport | null>(null);
 
@@ -123,9 +150,8 @@ export const ReportsPage = () => {
   }, [range]);
 
   const handlePresetChange = (value: string | number) => {
-    const key = String(value);
-    setPreset(key);
-    if (key === 'Personalizado') return; // mantém o intervalo atual
+    const label = String(value);
+    if (label === 'Personalizado') return; // mantém intervalo atual
     const today = dayjs();
     const ranges: Record<string, [Dayjs, Dayjs]> = {
       Diário: [today.startOf('day'), today.endOf('day')],
@@ -133,7 +159,12 @@ export const ReportsPage = () => {
       Mensal: [today.startOf('month'), today.endOf('day')],
       Anual: [today.startOf('year'), today.endOf('day')],
     };
-    setRange(ranges[key]);
+    const [s, e] = ranges[label];
+    setSearchParams({
+      period: PRESET_KEYS[label],
+      start: s.format('YYYY-MM-DD'),
+      end: e.format('YYYY-MM-DD'),
+    });
   };
 
   const summaryColumns = [
@@ -234,8 +265,11 @@ export const ReportsPage = () => {
           disabled={preset !== 'Personalizado'}
           onChange={(dates) => {
             if (dates && dates[0] && dates[1]) {
-              setPreset('Personalizado');
-              setRange([dates[0], dates[1]]);
+              setSearchParams({
+                period: 'custom',
+                start: dates[0].format('YYYY-MM-DD'),
+                end: dates[1].format('YYYY-MM-DD'),
+              });
             }
           }}
           style={{ width: 320 }}

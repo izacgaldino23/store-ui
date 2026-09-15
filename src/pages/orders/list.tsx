@@ -1,8 +1,8 @@
 import { useTable, List } from '@refinedev/antd';
 import { type CrudFilter } from '@refinedev/core';
 import { Table, Tag, Button, Select, DatePicker, Input } from 'antd';
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, Plus, Pencil, Printer } from 'lucide-react';
 import dayjs from 'dayjs';
 import {
@@ -16,41 +16,75 @@ import type { IOrder, IOrderItem, IOrderPrint } from './types';
 
 export const OrdersListPage = () => {
   const navigate = useNavigate();
-  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
-  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
-  const [hasPrintFilter, setHasPrintFilter] = useState<string | undefined>(undefined);
-  const [clientSearch, setClientSearch] = useState('');
-  const [debouncedClient, setDebouncedClient] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const statusFilter = searchParams.get('status') ?? undefined;
+  const hasPrintFilter = searchParams.get('has_print') ?? undefined;
+  const clientSearch = searchParams.get('client') ?? '';
+  const dateRange = useMemo(() => {
+    const s = searchParams.get('start_date');
+    const e = searchParams.get('end_date');
+    if (s && e) {
+      const sd = dayjs(s, 'YYYY-MM-DD');
+      const ed = dayjs(e, 'YYYY-MM-DD');
+      if (sd.isValid() && ed.isValid() && !sd.isAfter(ed)) return [sd, ed] as [dayjs.Dayjs, dayjs.Dayjs];
+    }
+    return null;
+  }, [searchParams]);
 
   const { tableProps, setFilters } = useTable<IOrder>({
     resource: 'orders',
     pagination: { current: 1, pageSize: 10, mode: 'server' },
   });
 
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedClient(clientSearch), 400);
-    return () => clearTimeout(timer);
-  }, [clientSearch]);
-
-  useEffect(() => {
-    applyFilters(statusFilter, dateRange, hasPrintFilter, debouncedClient || undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedClient]);
-
   const applyFilters = (
     status?: string,
     dates?: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null,
     hasPrint?: string,
-    clientSearch?: string
+    client?: string
   ) => {
     const f: CrudFilter[] = [];
     if (status) f.push({ field: 'status', operator: 'eq', value: status });
     if (hasPrint) f.push({ field: 'has_print', operator: 'eq', value: hasPrint });
-    if (clientSearch) f.push({ field: 'client_search', operator: 'eq', value: clientSearch });
+    if (client) f.push({ field: 'client_search', operator: 'eq', value: client });
     if (dates?.[0]) f.push({ field: 'start_date', operator: 'eq', value: dates[0].startOf('day').toISOString() });
     if (dates?.[1]) f.push({ field: 'end_date', operator: 'eq', value: dates[1].endOf('day').toISOString() });
     setFilters(f, 'replace');
   };
+
+  const updateParams = (updates: Record<string, string | undefined>) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      Object.entries(updates).forEach(([k, v]) => {
+        if (v) next.set(k, v);
+        else next.delete(k);
+      });
+      return next;
+    }, { replace: true });
+  };
+
+  // Estado local para o Input (responsividade de digitação)
+  const [clientInput, setClientInput] = useState(clientSearch);
+
+  // Sync quando a URL muda externamente (botão voltar)
+  useEffect(() => {
+    setClientInput(searchParams.get('client') ?? '');
+  }, [searchParams]);
+
+  // Debounce 400ms: escreve na URL após pausa na digitação
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      updateParams({ client: clientInput || undefined });
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientInput]);
+
+  // Aplica filtros na API quando qualquer valor derivado da URL muda
+  useEffect(() => {
+    applyFilters(statusFilter, dateRange, hasPrintFilter, clientSearch || undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, dateRange, hasPrintFilter, clientSearch]);
 
   return (
     <List
@@ -67,10 +101,7 @@ export const OrdersListPage = () => {
           allowClear
           placeholder="Filtrar por status"
           value={statusFilter}
-          onChange={(value) => {
-            setStatusFilter(value);
-            applyFilters(value, dateRange, hasPrintFilter, debouncedClient || undefined);
-          }}
+          onChange={(value) => updateParams({ status: value })}
           style={{ width: 180 }}
           options={statusFilterOptions}
         />
@@ -78,10 +109,7 @@ export const OrdersListPage = () => {
           allowClear
           placeholder="Impressão"
           value={hasPrintFilter}
-          onChange={(value) => {
-            setHasPrintFilter(value);
-            applyFilters(statusFilter, dateRange, value, debouncedClient || undefined);
-          }}
+          onChange={(value) => updateParams({ has_print: value })}
           style={{ width: 160 }}
           options={[
             { value: 'true', label: 'Com impressão' },
@@ -91,13 +119,10 @@ export const OrdersListPage = () => {
         <DatePicker.RangePicker
           value={dateRange}
           onChange={(dates) => {
-            setDateRange(dates as [dayjs.Dayjs | null, dayjs.Dayjs | null] | null);
-            applyFilters(
-              statusFilter,
-              dates as [dayjs.Dayjs | null, dayjs.Dayjs | null] | null,
-              hasPrintFilter,
-              debouncedClient || undefined
-            );
+            updateParams({
+              start_date: dates?.[0]?.format('YYYY-MM-DD'),
+              end_date: dates?.[1]?.format('YYYY-MM-DD'),
+            });
           }}
           format="DD/MM/YYYY"
           style={{ width: 260 }}
@@ -106,8 +131,8 @@ export const OrdersListPage = () => {
           placeholder="Buscar por cliente..."
           allowClear
           style={{ width: 220 }}
-          value={clientSearch}
-          onChange={(e) => setClientSearch(e.target.value)}
+          value={clientInput}
+          onChange={(e) => setClientInput(e.target.value)}
         />
       </div>
       <Table

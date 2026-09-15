@@ -3,6 +3,7 @@ import { useDelete, useInvalidate, useList, type CrudFilter } from '@refinedev/c
 import { Table, Space, Tag, Button, Modal, Typography, Select, Input, InputNumber, Form, message } from 'antd';
 import apiClient from '../../providers/rest-client';
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Pencil, Eye, Trash2, Boxes } from 'lucide-react';
 import { CsvImportModal } from '../../components/csv-import-modal';
 import { ItemFormDrawer } from '../../components/item-form-drawer';
@@ -43,7 +44,8 @@ function formatCurrency(value?: number | null): string {
 }
 
 export const ItemsListPage = () => {
-  const [tabKey, setTabKey] = useState<string>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabKey = searchParams.get('tab') === 'low-stock' ? 'low-stock' : 'all';
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -175,7 +177,7 @@ export const ItemsListPage = () => {
             <Button
               type={tabKey === 'all' ? 'primary' : 'text'}
               size="small"
-              onClick={() => setTabKey('all')}
+              onClick={() => setSearchParams({ tab: 'all' }, { replace: true })}
               style={{ borderRadius: '6px 0 0 6px' }}
             >
               Todos
@@ -183,7 +185,7 @@ export const ItemsListPage = () => {
             <Button
               type={tabKey === 'low-stock' ? 'primary' : 'text'}
               size="small"
-              onClick={() => setTabKey('low-stock')}
+              onClick={() => setSearchParams({ tab: 'low-stock' }, { replace: true })}
               style={{ borderRadius: '0 6px 6px 0' }}
             >
               Estoque Baixo
