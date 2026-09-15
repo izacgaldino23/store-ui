@@ -13,8 +13,8 @@ import apiClient from '../../providers/rest-client';
 
 const { Title } = Typography;
 
-const formatBRL = (value: number): string =>
-  value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const formatBRL = (value?: number): string =>
+  (value ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -191,7 +191,7 @@ export const ReportsPage = () => {
       dataIndex: 'revenue',
       key: 'revenue',
       align: 'right' as const,
-      render: (value: number) => formatBRL(value),
+      render: (value?: number) => (value == null ? '-' : formatBRL(value)),
     },
     ...extra,
   ];
