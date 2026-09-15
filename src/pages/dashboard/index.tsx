@@ -169,7 +169,7 @@ export const DashboardPage = () => {
       <Title level={3}>Visão Geral</Title>
 
       {/* Linha 1: KPIs de Hoje */}
-      <Row gutter={[16, 16]}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <KpiCard
           title="Faturamento Hoje"
           value={formatBRL(summary?.total_revenue)}
@@ -199,7 +199,7 @@ export const DashboardPage = () => {
       </Row>
 
       {/* Linha 2: status cards + Estoque Baixo (inalterado) */}
-      <Row gutter={[16, 16]}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         {(visibleStatuses.length > 0
           ? visibleStatuses
           : [{ status: 'pendente', count: 0 }]
@@ -227,7 +227,7 @@ export const DashboardPage = () => {
       </Row>
 
       {/* Linha 3: Pedidos Recentes (2/3) + Mais Vendidos do Mês (1/3) */}
-      <Row gutter={[16, 16]}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} lg={16}>
           <Card title="Pedidos Recentes" style={{ height: '100%' }}>
             {loading ? (
