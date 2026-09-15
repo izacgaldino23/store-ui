@@ -2,69 +2,53 @@ import { useState, useEffect } from 'react';
 import { Card, Col, Row, Statistic, Typography, Skeleton } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import {
-  Wallet,
-  ShoppingCart,
+  FileText,
+  Clock,
+  Printer,
+  CheckCircle2,
+  Truck,
   Package,
-  TrendingUp,
-  TrendingDown,
   PlusCircle,
   List,
-  BookOpen,
+  Users,
 } from 'lucide-react';
 import apiClient from '../../providers/rest-client';
 
 const { Title, Text } = Typography;
 
-function formatCurrency(value: number | null | undefined): string {
-  if (value == null) return '-';
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
-}
-
-interface ICashRegister {
+interface IStatusCount {
   status: string;
-  current_balance?: number;
-  starting_balance: number;
+  count: number;
 }
 
-interface IDailyReport {
-  total_sales: number;
-  total_expenses: number;
-}
+const STATUS_DISPLAY: Record<string, { label: string; icon: React.ReactNode }> = {
+  rascunho: { label: 'Rascunhos', icon: <FileText size={20} /> },
+  pendente: { label: 'Pendentes', icon: <Clock size={20} /> },
+  em_producao: { label: 'Em Produção', icon: <Printer size={20} /> },
+  pronto: { label: 'Prontos', icon: <CheckCircle2 size={20} /> },
+  entregue: { label: 'Entregues', icon: <Truck size={20} /> },
+};
 
 export const DashboardPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-
-  const [cashRegister, setCashRegister] = useState<ICashRegister | null>(null);
-  const [dailyReport, setDailyReport] = useState<IDailyReport | null>(null);
-  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const [statusCounts, setStatusCounts] = useState<IStatusCount[]>([]);
   const [lowStockCount, setLowStockCount] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       const results = await Promise.allSettled([
-        apiClient.get('/cash-register/current'),
-        apiClient.get('/cash-register/daily-report'),
-        apiClient.get('/orders', { params: { status: 'pendente', limit: 1 } }),
+        apiClient.get('/reports/orders/status-counts'),
         apiClient.get('/catalog/items/low-stock'),
       ]);
 
       if (results[0].status === 'fulfilled') {
-        setCashRegister(results[0].value.data as ICashRegister);
+        const data = results[0].value.data as { counts?: IStatusCount[] };
+        setStatusCounts(data.counts ?? []);
       }
       if (results[1].status === 'fulfilled') {
-        setDailyReport(results[1].value.data as IDailyReport);
-      }
-      if (results[2].status === 'fulfilled') {
-        const data = results[2].value.data as { total?: number };
-        setPendingOrdersCount(data.total ?? 0);
-      }
-      if (results[3].status === 'fulfilled') {
-        const data = results[3].value.data;
+        const data = results[1].value.data;
         const items = Array.isArray(data) ? data : (data as { items?: unknown[] }).items ?? [];
         setLowStockCount(items.length);
       }
@@ -104,31 +88,29 @@ export const DashboardPage = () => {
     </Col>
   );
 
+  const visibleStatuses = statusCounts.filter((sc) => sc.status !== 'cancelado');
+
   return (
     <div style={{ padding: 24 }}>
       <Title level={3}>Visão Geral</Title>
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <KpiCard
-          title="Caixa Atual"
-          value={
-            cashRegister
-              ? `${formatCurrency(cashRegister.current_balance ?? cashRegister.starting_balance)}`
-              : 'Caixa fechado'
-          }
-          prefix={<Wallet size={20} />}
-          color={cashRegister?.status === 'open' ? '#6B8E23' : undefined}
-          loading={loading}
-          onClick={() => navigate('/cash-flow/current')}
-        />
-        <KpiCard
-          title="Pedidos Pendentes"
-          value={pendingOrdersCount}
-          prefix={<ShoppingCart size={20} />}
-          color={pendingOrdersCount > 0 ? '#E879A8' : undefined}
-          loading={loading}
-          onClick={() => navigate('/orders')}
-        />
+      <Row gutter={[16, 16]}>
+        {(visibleStatuses.length > 0
+          ? visibleStatuses
+          : [{ status: 'pendente', count: 0 }]
+        ).map((sc) => {
+          const display = STATUS_DISPLAY[sc.status] ?? { label: sc.status, icon: <List size={20} /> };
+          return (
+            <KpiCard
+              key={sc.status}
+              title={display.label}
+              value={sc.count}
+              prefix={display.icon}
+              loading={loading}
+              onClick={() => navigate('/orders')}
+            />
+          );
+        })}
         <KpiCard
           title="Estoque Baixo"
           value={lowStockCount}
@@ -137,55 +119,52 @@ export const DashboardPage = () => {
           loading={loading}
           onClick={() => navigate('/items')}
         />
-        <KpiCard
-          title="Vendas Hoje"
-          value={dailyReport ? formatCurrency(dailyReport.total_sales) : '-'}
-          prefix={<TrendingUp size={20} />}
-          color="#6B8E23"
-          loading={loading}
-        />
-        <KpiCard
-          title="Despesas Hoje"
-          value={dailyReport ? formatCurrency(dailyReport.total_expenses) : '-'}
-          prefix={<TrendingDown size={20} />}
-          color="#ff4d4f"
-          loading={loading}
-        />
       </Row>
 
       <Title level={4}>Atalhos</Title>
       <Row gutter={[16, 16]}>
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={6}>
           <Card
             hoverable
             onClick={() => navigate('/orders/create')}
             style={{ textAlign: 'center', height: '100%' }}
           >
-            <PlusCircle size={32} style={{ color: '#E879A8', marginBottom: 8 }} />
+            <PlusCircle size={32} style={{ color: '#6B8E23', marginBottom: 8 }} />
             <br />
             <Text strong>Novo Pedido</Text>
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={6}>
+          <Card
+            hoverable
+            onClick={() => navigate('/orders')}
+            style={{ textAlign: 'center', height: '100%' }}
+          >
+            <List size={32} style={{ color: '#6B8E23', marginBottom: 8 }} />
+            <br />
+            <Text strong>Pedidos</Text>
+          </Card>
+        </Col>
+        <Col xs={24} sm={6}>
           <Card
             hoverable
             onClick={() => navigate('/items')}
             style={{ textAlign: 'center', height: '100%' }}
           >
-            <List size={32} style={{ color: '#E879A8', marginBottom: 8 }} />
+            <Package size={32} style={{ color: '#6B8E23', marginBottom: 8 }} />
             <br />
-            <Text strong>Catálogo</Text>
+            <Text strong>Produtos</Text>
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={6}>
           <Card
             hoverable
-            onClick={() => navigate('/cash-flow/current')}
+            onClick={() => navigate('/clients')}
             style={{ textAlign: 'center', height: '100%' }}
           >
-            <BookOpen size={32} style={{ color: '#E879A8', marginBottom: 8 }} />
+            <Users size={32} style={{ color: '#6B8E23', marginBottom: 8 }} />
             <br />
-            <Text strong>Abrir Caixa</Text>
+            <Text strong>Clientes</Text>
           </Card>
         </Col>
       </Row>
