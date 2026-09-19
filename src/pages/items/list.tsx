@@ -17,6 +17,7 @@ interface IItem {
   code: string;
   name: string;
   display_name?: string;
+  keywords?: string;
   sale_price?: number;
   current_stock?: number;
   min_stock: number;
@@ -268,7 +269,7 @@ export const ItemsListPage = () => {
           <>
             <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
               <Input.Search
-                placeholder="Buscar por nome ou código de barras..."
+                placeholder="Buscar por nome, código de barras ou palavra-chave..."
                 allowClear
                 value={searchText}
                 onChange={(e) => {
