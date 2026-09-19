@@ -72,7 +72,7 @@ export const ClientSelect = ({ value, onChange }: ClientSelectProps) => {
       setSearching(true);
       try {
         const res = await apiClient.get('/clients', {
-          params: { search: term, limit: 20 },
+          params: { search: term, limit: 20, active: true },
         });
         setOptions(
           (res.data?.clients || []).map((c: IClient) => ({
