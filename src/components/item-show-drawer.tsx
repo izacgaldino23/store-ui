@@ -11,6 +11,7 @@ interface IItem {
   bar_code?: string;
   name: string;
   display_name?: string;
+  keywords?: string;
   description?: string;
   cost_price: number;
   sale_price?: number;
@@ -113,6 +114,13 @@ export const ItemShowDrawer = ({ recordId, open, onClose }: ItemShowDrawerProps)
           </Descriptions.Item>
           <Descriptions.Item label="Criado em">{formatDate(record.created_at)}</Descriptions.Item>
           <Descriptions.Item label="Atualizado em">{formatDate(record.updated_at)}</Descriptions.Item>
+          {record.keywords && (
+            <Descriptions.Item label="Palavras-chave" span={2}>
+              {record.keywords.split(' ').map((kw) => (
+                <Tag key={kw}>{kw}</Tag>
+              ))}
+            </Descriptions.Item>
+          )}
           <Descriptions.Item label="Descrição" span={2}>
             {record.description || '-'}
           </Descriptions.Item>

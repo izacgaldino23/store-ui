@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from '@refinedev/antd';
 import { Drawer, Form, Input, Select, InputNumber, Button, Space, Row, Col, Spin, Alert } from 'antd';
 import type { BaseKey } from '@refinedev/core';
@@ -5,6 +6,7 @@ import type { BaseKey } from '@refinedev/core';
 interface IItemForm {
   name: string;
   display_name?: string;
+  keywords?: string[];
   item_type: 'revenda' | 'insumo' | 'servico';
   unit: string;
   cost_price: number;
@@ -36,6 +38,24 @@ export const ItemFormDrawer = ({ mode, recordId, open, onClose, onSuccess }: Ite
       onSuccess();
     },
   });
+
+  // Convert API string keywords -> array for the tags Select when editing
+  useEffect(() => {
+    const record = queryResult?.data?.data as (IItemForm & { keywords?: string }) | undefined;
+    if (isEdit && record && typeof record.keywords === 'string') {
+      form.setFieldsValue({
+        keywords: record.keywords ? record.keywords.split(' ') : [],
+      });
+    }
+  }, [isEdit, queryResult?.data, form]);
+
+  const handleFinish = (values: any) => {
+    const payload = {
+      ...values,
+      keywords: Array.isArray(values.keywords) ? values.keywords.join(' ') : (values.keywords ?? ''),
+    };
+    return formProps.onFinish?.(payload);
+  };
 
   const watchedItemType = Form.useWatch('item_type', form);
 
@@ -71,7 +91,7 @@ export const ItemFormDrawer = ({ mode, recordId, open, onClose, onSuccess }: Ite
               message="Ao alterar o tipo do item, o código (REV-/INS-/SVC-) será atualizado automaticamente."
             />
           )}
-          <Form {...formProps} layout="vertical">
+          <Form {...formProps} onFinish={handleFinish} layout="vertical">
           <Form.Item
             name="name"
             label="Nome"
@@ -82,6 +102,32 @@ export const ItemFormDrawer = ({ mode, recordId, open, onClose, onSuccess }: Ite
 
           <Form.Item name="display_name" label="Nome (normalizado)">
             <Input maxLength={255} />
+          </Form.Item>
+
+          <Form.Item
+            name="keywords"
+            label="Palavras-chave"
+            tooltip="Termos extras para busca (ex.: sinônimos, categoria). Separe por espaço ou vírgula."
+            rules={[
+              {
+                validator: (_, value: string[]) => {
+                  const joined = (value ?? []).join(' ');
+                  if (joined.length > 500) {
+                    return Promise.reject(new Error('Palavras-chave devem ter no máximo 500 caracteres'));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
+          >
+            <Select
+              mode="tags"
+              placeholder="Digite e pressione Enter — ex.: grampeador, escritório"
+              tokenSeparators={[' ', ',']}
+              open={false}
+              suffixIcon={null}
+              maxTagCount="responsive"
+            />
           </Form.Item>
 
           <Row gutter={16}>
