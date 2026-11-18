@@ -54,7 +54,7 @@ export interface ICartItem {
 export interface IPrintAddon {
   id: string;
   name: string;
-  price_type: 'fixed' | 'percentage';
+  price_type: 'fixed' | 'percentage' | 'per_print';
   price_value: number;
   active: boolean;
 }

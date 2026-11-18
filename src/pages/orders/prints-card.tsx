@@ -1,7 +1,7 @@
 import { Card, Table, Button, Select, Input, InputNumber, Space, Typography } from 'antd';
 import { Plus, Trash2, Printer } from 'lucide-react';
 import { formatCurrency } from './constants';
-import { computePrintUnitPrice } from './print-catalog';
+import { computePrintTotal, computePrintUnitPrice } from './print-catalog';
 import type { IPrintPaper, IPrintAddon, IPrintLine } from './types';
 
 const { Text } = Typography;
@@ -33,10 +33,22 @@ export const PrintsCard = ({ value, onChange, papers, addons, loading }: PrintsC
     return computePrintUnitPrice(paper, selectedAddons);
   };
 
-  const printsTotal = value.reduce(
-    (sum, line) => sum + lineUnitPrice(line) * (line.quantity || 0),
-    0
-  );
+  const lineTotal = (line: IPrintLine): number => {
+    const paper = papers.find((p) => p.id === line.print_paper_id);
+    const selectedAddons = addons.filter((a) => line.addon_ids.includes(a.id));
+    return computePrintTotal(paper, selectedAddons, line.quantity || 0);
+  };
+
+  const addonLabel = (addon: IPrintAddon): string =>
+    `${addon.name} (${
+      addon.price_type === 'percentage'
+        ? `+${addon.price_value}%`
+        : `+${formatCurrency(addon.price_value)}${
+            addon.price_type === 'per_print' ? ' por impressão' : ''
+          }`
+    })`;
+
+  const printsTotal = value.reduce((sum, line) => sum + lineTotal(line), 0);
 
   return (
     <Card
@@ -100,14 +112,7 @@ export const PrintsCard = ({ value, onChange, papers, addons, loading }: PrintsC
                 maxTagCount="responsive"
                 value={record.addon_ids}
                 onChange={(vals) => updateLine(index, { addon_ids: vals })}
-                options={addons.map((a) => ({
-                  value: a.id,
-                  label: `${a.name} (${
-                    a.price_type === 'fixed'
-                      ? `+${formatCurrency(a.price_value)}`
-                      : `+${a.price_value}%`
-                  })`,
-                }))}
+                options={addons.map((a) => ({ value: a.id, label: addonLabel(a) }))}
               />
             )}
           />
@@ -133,9 +138,7 @@ export const PrintsCard = ({ value, onChange, papers, addons, loading }: PrintsC
             title="Total"
             width={110}
             align="right"
-            render={(_, record: IPrintLine) =>
-              formatCurrency(lineUnitPrice(record) * (record.quantity || 0))
-            }
+            render={(_, record: IPrintLine) => formatCurrency(lineTotal(record))}
           />
           <Table.Column
             title=""

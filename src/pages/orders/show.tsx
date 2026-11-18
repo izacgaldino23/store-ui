@@ -13,7 +13,7 @@ import {
   formatCurrency,
   formatDate,
 } from './constants';
-import type { IOrder, IOrderPrintAddon } from './types';
+import type { IOrder, IOrderPrint, IOrderPrintAddon } from './types';
 
 const { Title } = Typography;
 
@@ -235,7 +235,19 @@ export const OrdersShowPage = () => {
               title="Valor Unit."
               width={130}
               align="right"
-              render={(val: number) => formatCurrency(val)}
+              render={(val: number, record: IOrderPrint) => {
+                const flatFees = record.addons
+                  .filter((a) => a.price_type === 'per_print')
+                  .reduce((sum, a) => sum + a.price_value, 0);
+                return (
+                  <>
+                    {formatCurrency(val)}
+                    {flatFees > 0 && (
+                      <div style={{ fontSize: 11 }}>+ {formatCurrency(flatFees)} por impressão</div>
+                    )}
+                  </>
+                );
+              }}
             />
             <Table.Column
               dataIndex="total_price"

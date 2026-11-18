@@ -30,7 +30,7 @@ interface PaperFormState {
 
 interface AddonFormState {
   name: string;
-  priceType: 'fixed' | 'percentage';
+  priceType: 'fixed' | 'percentage' | 'per_print';
   priceValue: number | null;
 }
 
@@ -347,7 +347,13 @@ export const PrintingListPage = () => {
             dataIndex="price_type"
             title="Tipo"
             width={160}
-            render={(val: string) => (val === 'fixed' ? 'Valor fixo' : 'Percentual')}
+            render={(val: string) =>
+              val === 'fixed'
+                ? 'Por folha'
+                : val === 'per_print'
+                  ? 'Por impressão'
+                  : 'Percentual'
+            }
           />
           <Table.Column
             dataIndex="price_value"
@@ -355,7 +361,7 @@ export const PrintingListPage = () => {
             width={120}
             align="right"
             render={(val: number, record: IPrintAddon) =>
-              record.price_type === 'fixed' ? formatCurrency(val) : `${val}%`
+              record.price_type === 'percentage' ? `${val}%` : formatCurrency(val)
             }
           />
           <Table.Column
@@ -484,6 +490,7 @@ export const PrintingListPage = () => {
           options={[
             { value: 'fixed', label: 'Valor fixo por folha' },
             { value: 'percentage', label: 'Percentual sobre o papel' },
+            { value: 'per_print', label: 'Valor fixo por impressão' },
           ]}
           optionType="button"
         />
@@ -493,8 +500,8 @@ export const PrintingListPage = () => {
         <InputNumber
           style={{ width: '100%' }}
           min={0}
-          step={addonForm.priceType === 'fixed' ? 0.01 : 1}
-          prefix={addonForm.priceType === 'fixed' ? 'R$' : undefined}
+          step={addonForm.priceType === 'percentage' ? 1 : 0.01}
+          prefix={addonForm.priceType === 'percentage' ? undefined : 'R$'}
           suffix={addonForm.priceType === 'percentage' ? '%' : undefined}
           value={addonForm.priceValue}
           onChange={(val) => setAddonForm({ ...addonForm, priceValue: val })}

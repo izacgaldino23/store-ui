@@ -46,10 +46,23 @@ export const computePrintUnitPrice = (
   for (const addon of selectedAddons) {
     if (addon.price_type === 'fixed') {
       total += addon.price_value;
-    } else {
+    } else if (addon.price_type === 'percentage') {
       percentSum += addon.price_value;
     }
   }
   total += paper.price_per_sheet * (percentSum / 100);
   return Math.round(total * 100) / 100;
+};
+
+export const computePrintTotal = (
+  paper: IPrintPaper | undefined,
+  selectedAddons: IPrintAddon[],
+  quantity: number
+): number => {
+  if (!paper) return 0;
+  const flat = selectedAddons.reduce(
+    (sum, addon) => sum + (addon.price_type === 'per_print' ? addon.price_value : 0),
+    0
+  );
+  return Math.round((computePrintUnitPrice(paper, selectedAddons) * quantity + flat) * 100) / 100;
 };
