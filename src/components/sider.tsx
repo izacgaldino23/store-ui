@@ -34,6 +34,7 @@ const MENU_SECTIONS: { key: string; title: string }[] = [
   { key: 'geral', title: 'Geral' },
   { key: 'vendas', title: 'Vendas & Caixa' },
   { key: 'cadastros', title: 'Cadastros' },
+  { key: 'mais', title: 'Mais' },
 ];
 
 export const AppSider = ({

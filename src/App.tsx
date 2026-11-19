@@ -69,11 +69,11 @@ function App() {
           {
             name: 'reports',
             list: '/reports',
-            meta: { icon: <BarChart3 size={20} />, label: 'Relatórios', section: 'vendas' },
+            meta: { icon: <BarChart3 size={20} />, label: 'Relatórios', section: 'mais' },
           },
           {
             name: 'cash',
-            meta: { icon: <Wallet size={20} />, label: 'Caixa', section: 'vendas' },
+            meta: { icon: <Wallet size={20} />, label: 'Caixa', section: 'mais' },
           },
           {
             name: 'cash-register',

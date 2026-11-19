@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Table, Button, Input, Select, InputNumber, Space, Typography, message, Divider, Tag, Spin, Segmented } from 'antd';
+import { Card, Table, Button, Input, Select, InputNumber, Space, Typography, message, Divider, Tag, Spin, Segmented, Collapse } from 'antd';
 import { Plus, Minus, Trash2, ArrowLeft } from 'lucide-react';
 import apiClient from '../../providers/rest-client';
 import { useUnsavedOrderGuard } from '../../components/use-unsaved-order-guard';
@@ -381,118 +381,140 @@ export const OrdersCreatePage = () => {
         </div>
 
         <div style={{ width: 380 }}>
-          <Card size="small" title="Cliente" style={{ marginBottom: 16 }}>
-            <ClientSelect value={client} onChange={setClient} />
-            <Input.TextArea
-              placeholder="Observações (opcional)"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              style={{ marginTop: 8 }}
-            />
-          </Card>
-
-          <Card size="small" title="Desconto" style={{ marginBottom: 16 }}>
-            <Segmented
-              block
-              options={[
-                { label: 'Valor (R$)', value: 'valor' },
-                { label: 'Percentual (%)', value: 'percentual' },
-              ]}
-              value={discountType}
-              onChange={(v) => setDiscountType(v as 'valor' | 'percentual')}
-            />
-            <InputNumber
-              style={{ width: '100%', marginTop: 8 }}
-              min={0}
-              max={discountType === 'percentual' ? 100 : undefined}
-              step={0.01}
-              prefix={discountType === 'percentual' ? '%' : 'R$'}
-              placeholder={discountType === 'percentual' ? 'Percentual (0-100)' : 'Valor em R$'}
-              value={discountValue}
-              onChange={(val) => setDiscountValue(val || 0)}
-            />
-            {discountAmount > 0 && (
-              <div style={{ textAlign: 'right', marginTop: 8 }}>
-                <Text type="danger">Desconto: -{formatCurrency(discountAmount)}</Text>
-              </div>
-            )}
-          </Card>
-
-          <Card size="small" title="Pagamentos" style={{ marginBottom: 16 }}>
-            <Table
-              dataSource={payments}
-              rowKey={(_, index) => String(index)}
-              size="small"
-              pagination={false}
-            >
-              <Table.Column
-                dataIndex="method"
-                title="Método"
-                render={(val: string) =>
-                  paymentMethodOptions.find((o) => o.value === val)?.label || val
-                }
-              />
-              <Table.Column
-                dataIndex="amount"
-                title="Valor"
-                width={120}
-                align="right"
-                render={(val: number) => formatCurrency(val)}
-              />
-              <Table.Column
-                title=""
-                width={50}
-                render={(_, record: IPayment, index: number) => (
-                  <Button
-                    size="small"
-                    danger
-                    type="link"
-                    icon={<Trash2 size={14} />}
-                    onClick={() => removePayment(index)}
-                  />
-                )}
-              />
-            </Table>
-            {payments.length > 0 && (
-              <div style={{ textAlign: 'right', marginTop: 8 }}>
-                <Text>Pago: {formatCurrency(paymentTotal)}</Text>
-                <br />
-                <Text type={Math.abs(remaining) > 0.01 ? 'danger' : 'success'}>
-                  {Math.abs(remaining) > 0.01
-                    ? `Restam: ${formatCurrency(remaining)}`
-                    : 'Total coberto'}
-                </Text>
-              </div>
-            )}
-            <Divider />
-            <Space style={{ width: '100%' }}>
-              <Select
-                placeholder="Método"
-                style={{ width: 140 }}
-                value={pendingMethod}
-                onChange={handlePaymentMethodChange}
-                options={paymentMethodOptions}
-              />
-              <InputNumber
-                placeholder="Valor"
-                style={{ width: 120 }}
-                min={0}
-                step={0.01}
-                value={pendingAmount}
-                onChange={(val) => setPendingAmount(val || 0)}
-                prefix="R$"
-              />
-              <Button
-                type="primary"
-                icon={<Plus size={14} />}
-                onClick={addPayment}
-                disabled={!pendingMethod || pendingAmount <= 0}
-              >
-                Add
-              </Button>
-            </Space>
-          </Card>
+          <Collapse
+            defaultActiveKey={['desconto']}
+            style={{ marginBottom: 16 }}
+            items={[
+              {
+                key: 'cliente',
+                label: 'Cliente / Observações',
+                children: (
+                  <>
+                    <ClientSelect value={client} onChange={setClient} />
+                    <Input.TextArea
+                      placeholder="Observações (opcional)"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={2}
+                      style={{ marginTop: 8 }}
+                    />
+                  </>
+                ),
+              },
+              {
+                key: 'desconto',
+                label: 'Desconto',
+                children: (
+                  <>
+                    <Segmented
+                      block
+                      options={[
+                        { label: 'Valor (R$)', value: 'valor' },
+                        { label: 'Percentual (%)', value: 'percentual' },
+                      ]}
+                      value={discountType}
+                      onChange={(v) => setDiscountType(v as 'valor' | 'percentual')}
+                    />
+                    <InputNumber
+                      style={{ width: '100%', marginTop: 8 }}
+                      min={0}
+                      max={discountType === 'percentual' ? 100 : undefined}
+                      step={0.01}
+                      prefix={discountType === 'percentual' ? '%' : 'R$'}
+                      placeholder={discountType === 'percentual' ? 'Percentual (0-100)' : 'Valor em R$'}
+                      value={discountValue}
+                      onChange={(val) => setDiscountValue(val || 0)}
+                    />
+                    {discountAmount > 0 && (
+                      <div style={{ textAlign: 'right', marginTop: 8 }}>
+                        <Text type="danger">Desconto: -{formatCurrency(discountAmount)}</Text>
+                      </div>
+                    )}
+                  </>
+                ),
+              },
+              {
+                key: 'pagamentos',
+                label: 'Pagamentos (obrigatório para finalizar)',
+                children: (
+                  <>
+                    <Table
+                      dataSource={payments}
+                      rowKey={(_, index) => String(index)}
+                      size="small"
+                      pagination={false}
+                    >
+                      <Table.Column
+                        dataIndex="method"
+                        title="Método"
+                        render={(val: string) =>
+                          paymentMethodOptions.find((o) => o.value === val)?.label || val
+                        }
+                      />
+                      <Table.Column
+                        dataIndex="amount"
+                        title="Valor"
+                        width={120}
+                        align="right"
+                        render={(val: number) => formatCurrency(val)}
+                      />
+                      <Table.Column
+                        title=""
+                        width={50}
+                        render={(_, record: IPayment, index: number) => (
+                          <Button
+                            size="small"
+                            danger
+                            type="link"
+                            icon={<Trash2 size={14} />}
+                            onClick={() => removePayment(index)}
+                          />
+                        )}
+                      />
+                    </Table>
+                    {payments.length > 0 && (
+                      <div style={{ textAlign: 'right', marginTop: 8 }}>
+                        <Text>Pago: {formatCurrency(paymentTotal)}</Text>
+                        <br />
+                        <Text type={Math.abs(remaining) > 0.01 ? 'danger' : 'success'}>
+                          {Math.abs(remaining) > 0.01
+                            ? `Restam: ${formatCurrency(remaining)}`
+                            : 'Total coberto'}
+                        </Text>
+                      </div>
+                    )}
+                    <Divider />
+                    <Space style={{ width: '100%' }}>
+                      <Select
+                        placeholder="Método"
+                        style={{ width: 140 }}
+                        value={pendingMethod}
+                        onChange={handlePaymentMethodChange}
+                        options={paymentMethodOptions}
+                      />
+                      <InputNumber
+                        placeholder="Valor"
+                        style={{ width: 120 }}
+                        min={0}
+                        step={0.01}
+                        value={pendingAmount}
+                        onChange={(val) => setPendingAmount(val || 0)}
+                        prefix="R$"
+                      />
+                      <Button
+                        type="primary"
+                        icon={<Plus size={14} />}
+                        onClick={addPayment}
+                        disabled={!pendingMethod || pendingAmount <= 0}
+                      >
+                        Add
+                      </Button>
+                    </Space>
+                  </>
+                ),
+              },
+            ]}
+          />
 
           <Button
             type="primary"
