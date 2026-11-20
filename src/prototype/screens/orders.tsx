@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { clientsApi, itemsApi, ordersApi, printingApi } from '../api'
+import { ClientDialog, type ClientPayload } from '../client-dialog'
 import {
   computeDiscountAmount,
   computePrintTotal,
@@ -17,7 +17,7 @@ import {
   shortDate,
   statusOptions,
 } from '../constants'
-import { useAction, useApi } from '../hooks'
+import { useAction, useApi, useDebouncedValue } from '../hooks'
 import type {
   CatalogItem,
   DiscountType,
@@ -55,23 +55,20 @@ interface PrintLine {
 export function OrdersScreen() {
   const [status, setStatus] = useState('')
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
   const { data, loading, error, reload } = useApi(
-    () => ordersApi.list({ status: status || undefined, client_search: search || undefined, limit: 100 }),
-    [status, search],
+    () =>
+      ordersApi.list({
+        status: status || undefined,
+        client_search: debouncedSearch || undefined,
+        limit: 100,
+      }),
+    [status, debouncedSearch],
   )
 
   return (
     <>
-      <PageHeader
-        title="Pedidos"
-        description="Acompanhe e finalize as vendas."
-        action={
-          <LinkButton to="/orders/create">
-            <Plus data-icon="inline-start" />
-            Novo pedido
-          </LinkButton>
-        }
-      />
+      <PageHeader title="Pedidos" description="Acompanhe e finalize as vendas." />
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <Input
           value={search}
@@ -92,15 +89,47 @@ export function OrdersScreen() {
         </Button>
       </div>
       <StatePanel loading={loading} error={error} empty={!data?.orders.length}>
-        <div className="flex flex-col gap-3">
+        <div className="hidden overflow-x-auto rounded-lg border md:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Pedido</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Data</TableHead>
+                <TableHead>Itens</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data?.orders.map((order) => (
+                <TableRow key={order.id}>
+                  <TableCell>
+                    <Link to={`/orders/${order.id}`} className="font-medium underline underline-offset-4">
+                      #{order.id.slice(0, 8)}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{order.client_name || 'Balcão'}</TableCell>
+                  <TableCell>{shortDate(order.created_at)}</TableCell>
+                  <TableCell>
+                    {order.items.length} itens · {order.prints.length} impressões
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={order.status} />
+                  </TableCell>
+                  <TableCell className="text-right font-semibold">{money(order.total_amount)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="flex flex-col gap-3 md:hidden">
           {data?.orders.map((order) => (
             <Link key={order.id} to={`/orders/${order.id}`}>
               <Card size="sm" className="transition-colors hover:bg-muted/50">
                 <CardContent className="flex items-center gap-3 py-4">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-base font-medium">
-                      {order.client_name || 'Balcão'}
-                    </p>
+                    <p className="truncate text-base font-medium">{order.client_name || 'Balcão'}</p>
                     <p className="text-sm text-muted-foreground">
                       {shortDate(order.created_at)} · {order.items.length} itens · {order.prints.length} impressões
                     </p>
@@ -300,29 +329,36 @@ export function EditOrderScreen() {
 
 function OrderForm({ orderId }: { orderId?: string }) {
   const navigate = useNavigate()
+  const [step, setStep] = useState<'itens' | 'detalhes'>('itens')
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
+  const catalogSearch = debouncedSearch.trim().length >= 2 ? debouncedSearch : undefined
   const [cart, setCart] = useState<CartLine[]>([])
   const [prints, setPrints] = useState<PrintLine[]>([])
   const [clientId, setClientId] = useState('')
+  const [clientOpen, setClientOpen] = useState(false)
   const [notes, setNotes] = useState('')
   const [discountType, setDiscountType] = useState<DiscountType>('valor')
   const [discountValue, setDiscountValue] = useState(0)
   const [paymentOpen, setPaymentOpen] = useState(false)
 
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(timer)
-  }, [search])
-
   const catalog = useApi(
-    () => itemsApi.list({ search: debouncedSearch || undefined, limit: 20 }),
-    [debouncedSearch],
+    () =>
+      catalogSearch
+        ? itemsApi.list({ search: catalogSearch, limit: 20 })
+        : Promise.resolve({ items: [], total: 0 }),
+    [catalogSearch],
   )
   const papers = useApi(() => printingApi.papers({ active: true, limit: 100 }), [])
   const addons = useApi(() => printingApi.addons({ active: true, limit: 100 }), [])
   const clients = useApi(() => clientsApi.list({ active: true, limit: 100 }), [])
   const existing = useApi(() => (orderId ? ordersApi.get(orderId) : Promise.resolve(null)), [orderId])
+  const clientSave = useAction(async (payload: ClientPayload) => {
+    const created = await clientsApi.save(payload)
+    setClientId(created.id)
+    setClientOpen(false)
+    clients.reload()
+  })
 
   useEffect(() => {
     const order = existing.data
@@ -437,11 +473,8 @@ function OrderForm({ orderId }: { orderId?: string }) {
     ])
   }
 
-  const actionError = save.error || finalize.error
-  const invalid =
-    (!cart.length && !prints.every((line) => !line.print_paper_id) && !prints.length) ||
-    discount > subtotal ||
-    subtotal <= 0
+  const actionError = save.error || finalize.error || clientSave.error
+  const invalid = subtotal <= 0 || discount > subtotal
 
   return (
     <>
@@ -460,49 +493,51 @@ function OrderForm({ orderId }: { orderId?: string }) {
       )}
 
       <div className="pb-40 md:pb-4">
-        <Tabs defaultValue="produtos">
-          <TabsList className="h-12 w-full">
-            <TabsTrigger value="produtos" className="h-10 text-base">
-              Produtos <Badge variant="secondary">{cart.length}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="impressoes" className="h-10 text-base">
-              Impressões <Badge variant="secondary">{prints.filter((line) => line.print_paper_id).length}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="detalhes" className="h-10 text-base">
-              Detalhes
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="produtos" className="space-y-3 pt-4">
+        <div className="mb-4 flex items-center gap-3 text-sm">
+          <span className={step === 'itens' ? 'font-semibold text-primary' : 'text-muted-foreground'}>
+            1. Produtos e impressões
+          </span>
+          <span className="h-px flex-1 bg-border" />
+          <span className={step === 'detalhes' ? 'font-semibold text-primary' : 'text-muted-foreground'}>
+            2. Detalhes
+          </span>
+        </div>
+        {step === 'itens' && (
+          <>
+            <section className="space-y-3">
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Buscar item por nome ou código"
             />
-            <StatePanel loading={catalog.loading} error={catalog.error}>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {catalog.data?.items.map((item) => (
-                  <Card key={item.id} size="sm">
-                    <CardHeader>
-                      <CardTitle className="text-base">{item.name}</CardTitle>
-                      <CardDescription>{item.code}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="text-lg font-semibold">
-                      {item.sale_price ? money(item.sale_price) : 'Sem preço'}
-                    </CardContent>
-                    <CardFooter>
-                      <Button
-                        className="h-11 w-full text-base"
-                        disabled={!item.sale_price}
-                        onClick={() => addProduct(item)}
-                      >
-                        <Plus data-icon="inline-start" />
-                        Adicionar
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-            </StatePanel>
+            {!catalogSearch && (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                Digite ao menos 2 caracteres para buscar produtos.
+              </p>
+            )}
+            {catalogSearch && (
+              <StatePanel loading={catalog.loading} error={catalog.error}>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {catalog.data?.items.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => addProduct(item)}
+                      disabled={!item.sale_price}
+                      className="flex items-center justify-between gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted/50 disabled:opacity-50"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">{item.name}</span>
+                        <span className="block text-xs text-muted-foreground">{item.code}</span>
+                      </span>
+                      <span className="shrink-0 font-semibold">
+                        {item.sale_price ? money(item.sale_price) : 'Sem preço'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </StatePanel>
+            )}
             <div className="flex flex-col gap-2">
               {cart.map((line) => (
                 <Card key={line.item_id} size="sm">
@@ -539,9 +574,9 @@ function OrderForm({ orderId }: { orderId?: string }) {
                 </Card>
               ))}
             </div>
-          </TabsContent>
+            </section>
 
-          <TabsContent value="impressoes" className="space-y-3 pt-4">
+            <section className="space-y-3">
             <Button variant="outline" onClick={addPrint} disabled={!papers.data?.length}>
               <Plus data-icon="inline-start" />
               Nova impressão
@@ -651,19 +686,28 @@ function OrderForm({ orderId }: { orderId?: string }) {
             {!prints.length && (
               <p className="py-6 text-center text-muted-foreground">Nenhuma impressão adicionada.</p>
             )}
-          </TabsContent>
+            </section>
+          </>
+        )}
 
-          <TabsContent value="detalhes" className="space-y-4 pt-4">
-            <Field label="Cliente">
-              <Select value={clientId} onChange={(event) => setClientId(event.target.value)}>
-                <option value="">Balcão (sem cliente)</option>
-                {clients.data?.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+        {step === 'detalhes' && (
+          <section className="space-y-4">
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <span className="mb-1.5 block text-sm font-medium">Cliente</span>
+                <Select value={clientId} onChange={(event) => setClientId(event.target.value)}>
+                  <option value="">Balcão (sem cliente)</option>
+                  {clients.data?.map((client) => (
+                    <option key={client.id} value={client.id}>
+                      {client.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <Button type="button" variant="outline" className="h-11" onClick={() => setClientOpen(true)}>
+                Novo cliente
+              </Button>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Tipo de desconto">
                 <Select
@@ -708,29 +752,71 @@ function OrderForm({ orderId }: { orderId?: string }) {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </section>
+        )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-14 z-30 flex items-center justify-between gap-3 border-t bg-background px-4 py-3 shadow-lg md:bottom-0 md:left-60">
-        <div>
-          <p className="text-sm text-muted-foreground">Total</p>
-          <p className="text-2xl font-semibold">{money(total)}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" disabled={save.busy || invalid} onClick={() => void save.run()}>
-            Salvar rascunho
-          </Button>
-          <Button
-            size="lg"
-            className="h-12 px-5 text-base"
-            disabled={finalize.busy || invalid}
-            onClick={() => setPaymentOpen(true)}
-          >
-            Finalizar
-          </Button>
+      <div className="fixed inset-x-0 bottom-14 z-30 border-t bg-background shadow-lg md:bottom-0 md:left-60">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
+          <div>
+            <p className="text-sm text-muted-foreground">Total</p>
+            <p className="text-2xl font-semibold">{money(total)}</p>
+          </div>
+          <div className="flex gap-2">
+            {step === 'detalhes' && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="lg"
+                className="h-11"
+                onClick={() => setStep('itens')}
+              >
+                Voltar
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="h-11"
+              disabled={save.busy || invalid}
+              onClick={() => void save.run()}
+            >
+              Salvar rascunho
+            </Button>
+            {step === 'itens' ? (
+              <Button
+                type="button"
+                size="lg"
+                className="h-11 px-5"
+                disabled={subtotal <= 0}
+                onClick={() => setStep('detalhes')}
+              >
+                Continuar
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="lg"
+                className="h-11 px-5"
+                disabled={finalize.busy || invalid}
+                onClick={() => setPaymentOpen(true)}
+              >
+                Finalizar
+              </Button>
+            )}
+          </div>
         </div>
       </div>
+
+      <ClientDialog
+        open={clientOpen}
+        onOpenChange={setClientOpen}
+        client={null}
+        busy={clientSave.busy}
+        onSave={(payload) => void clientSave.run(payload)}
+        title="Novo cliente"
+      />
 
       <PaymentDialog
         open={paymentOpen}

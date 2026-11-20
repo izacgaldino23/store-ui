@@ -1,36 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { clientsApi } from '../api'
-import { useAction, useApi } from '../hooks'
+import { ClientDialog, type ClientPayload } from '../client-dialog'
+import { useAction, useApi, useDebouncedValue } from '../hooks'
 import type { Client } from '../types'
-import { ConfirmDialog, Field, PageHeader, StatePanel, Textarea } from '../ui'
-
-type ClientPayload = Omit<Client, 'id' | 'active'>
-
-const emptyClient: ClientPayload = {
-  name: '',
-  phone: '',
-  city: 'Juazeiro do Norte',
-  street: '',
-  neighborhood: '',
-  number: '',
-  complement: '',
-  notes: '',
-}
+import { ConfirmDialog, PageHeader, StatePanel } from '../ui'
 
 export function ClientsScreen() {
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
   const [editing, setEditing] = useState<Client | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [deleting, setDeleting] = useState<Client | null>(null)
   const { data, loading, error, reload } = useApi(
-    () => clientsApi.list({ search: search || undefined, active: true, limit: 100 }),
-    [search],
+    () => clientsApi.list({ search: debouncedSearch || undefined, active: true, limit: 100 }),
+    [debouncedSearch],
   )
   const save = useAction(async (payload: ClientPayload) => {
     await clientsApi.save(payload, editing?.id)
@@ -75,7 +64,51 @@ export function ClientsScreen() {
         className="mb-4 sm:max-w-sm"
       />
       <StatePanel loading={loading} error={error} empty={!data?.length}>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="hidden overflow-x-auto rounded-lg border md:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Telefone</TableHead>
+                <TableHead>Cidade</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data?.map((client) => (
+                <TableRow key={client.id}>
+                  <TableCell className="font-medium">{client.name}</TableCell>
+                  <TableCell>{client.phone || '-'}</TableCell>
+                  <TableCell>{client.city || 'Juazeiro do Norte'}</TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Editar ${client.name}`}
+                        onClick={() => {
+                          setEditing(client)
+                          setFormOpen(true)
+                        }}
+                      >
+                        <Pencil />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Excluir ${client.name}`}
+                        onClick={() => setDeleting(client)}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 md:hidden">
           {data?.map((client) => (
             <Card key={client.id} size="sm">
               <CardHeader>
@@ -123,88 +156,5 @@ export function ClientsScreen() {
         onConfirm={() => void remove.run()}
       />
     </>
-  )
-}
-
-function ClientDialog({
-  open,
-  onOpenChange,
-  client,
-  busy,
-  onSave,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  client: Client | null
-  busy: boolean
-  onSave: (payload: ClientPayload) => void
-}) {
-  const [form, setForm] = useState<ClientPayload>(emptyClient)
-  useEffect(() => {
-    if (client) {
-      setForm({
-        name: client.name,
-        phone: client.phone || '',
-        city: client.city || '',
-        street: client.street || '',
-        neighborhood: client.neighborhood || '',
-        number: client.number || '',
-        complement: client.complement || '',
-        notes: client.notes || '',
-      })
-    } else {
-      setForm(emptyClient)
-    }
-  }, [client])
-  const update = (patch: Partial<ClientPayload>) => setForm((current) => ({ ...current, ...patch }))
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{client ? 'Editar cliente' : 'Novo cliente'}</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Nome">
-            <Input value={form.name} onChange={(event) => update({ name: event.target.value })} required />
-          </Field>
-          <Field label="Telefone">
-            <Input value={form.phone || ''} onChange={(event) => update({ phone: event.target.value })} />
-          </Field>
-          <Field label="Cidade">
-            <Input value={form.city || ''} onChange={(event) => update({ city: event.target.value })} />
-          </Field>
-          <Field label="Bairro">
-            <Input
-              value={form.neighborhood || ''}
-              onChange={(event) => update({ neighborhood: event.target.value })}
-            />
-          </Field>
-          <Field label="Rua">
-            <Input value={form.street || ''} onChange={(event) => update({ street: event.target.value })} />
-          </Field>
-          <Field label="Número">
-            <Input value={form.number || ''} onChange={(event) => update({ number: event.target.value })} />
-          </Field>
-          <Field label="Complemento">
-            <Input
-              value={form.complement || ''}
-              onChange={(event) => update({ complement: event.target.value })}
-            />
-          </Field>
-          <Field label="Observações">
-            <Textarea value={form.notes || ''} onChange={(event) => update({ notes: event.target.value })} />
-          </Field>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button disabled={busy || !form.name} onClick={() => onSave(form)}>
-            Salvar
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }

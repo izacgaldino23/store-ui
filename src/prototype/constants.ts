@@ -1,4 +1,4 @@
-import type { DiscountType, OrderStatus, PaymentMethod, PrintAddon, PrintPaper } from './types'
+import type { Client, DiscountType, OrderStatus, PaymentMethod, PrintAddon, PrintPaper } from './types'
 
 export const money = (value?: number | null) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value ?? 0)
@@ -97,4 +97,15 @@ export function computePrintTotal(
     0,
   )
   return Math.round((computePrintUnitPrice(paper, addons) * quantity + flat) * 100) / 100
+}
+
+export const emptyClient: Omit<Client, 'id' | 'active'> = {
+  name: '',
+  phone: '',
+  city: 'Juazeiro do Norte',
+  street: '',
+  neighborhood: '',
+  number: '',
+  complement: '',
+  notes: '',
 }

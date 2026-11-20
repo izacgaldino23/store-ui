@@ -9,7 +9,6 @@ import type {
   Order,
   OrderPayload,
   OrdersSummary,
-  PriceEntry,
   PrintAddon,
   PrintPaper,
   ProductsReport,
@@ -176,37 +175,13 @@ export const clientsApi = {
     return data
   },
   save: async (payload: Omit<Client, 'id' | 'active'>, id?: string) => {
-    if (id) await apiClient.put(`/clients/${id}`, payload)
-    else await apiClient.post('/clients', payload)
+    const { data } = id
+      ? await apiClient.put<Client>(`/clients/${id}`, payload)
+      : await apiClient.post<Client>('/clients', payload)
+    return data
   },
   remove: async (id: string) => {
     await apiClient.delete(`/clients/${id}`)
-  },
-}
-
-export const pricingApi = {
-  list: async () => {
-    const { data } = await apiClient.get<PriceEntry[]>('/pricing/table')
-    return unwrap(data as unknown as PriceEntry[], [])
-  },
-  save: async (payload: Omit<PriceEntry, 'id' | 'active'>, id?: string) => {
-    if (id) await apiClient.put(`/pricing/table/${id}`, payload)
-    else await apiClient.post('/pricing/table', payload)
-  },
-  remove: async (id: string) => {
-    await apiClient.delete(`/pricing/table/${id}`)
-  },
-  calculate: async (payload: {
-    material_cost: number
-    margin_percent: number
-    paper_type?: string
-    quantity?: number
-  }) => {
-    const { data } = await apiClient.post<{ suggested_price: number; unit_price?: number }>(
-      '/pricing/calculate',
-      payload,
-    )
-    return data
   },
 }
 

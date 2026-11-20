@@ -144,16 +144,6 @@ export interface Client {
   active: boolean
 }
 
-export interface PriceEntry {
-  id: string
-  paper_type: string
-  min_quantity: number
-  max_quantity: number
-  unit_price: number
-  description?: string
-  active: boolean
-}
-
 export interface CashRegister {
   id: string
   opened_at: string

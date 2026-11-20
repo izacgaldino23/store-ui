@@ -3,14 +3,14 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { itemsApi, printingApi } from '../api'
 import { addonPriceTypes, money } from '../constants'
 import { useAction, useApi } from '../hooks'
 import type { PrintAddon, PrintPaper } from '../types'
 import { ConfirmDialog, Field, PageHeader, Select, StatePanel } from '../ui'
+import { SidePanel } from '../side-panel'
 
 export function PrintingScreen() {
   const [paperOpen, setPaperOpen] = useState(false)
@@ -48,127 +48,206 @@ export function PrintingScreen() {
 
   return (
     <>
-      <PageHeader
-        title="Impressão"
-        description="Papéis, insumos e adicionais de impressão."
-      />
+      <PageHeader title="Impressão" description="Papéis, insumos e adicionais de impressão." />
       {error && (
         <Alert variant="destructive" className="mb-4">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      <Tabs defaultValue="papers">
-        <TabsList className="h-12 w-full sm:w-auto">
-          <TabsTrigger value="papers" className="h-10 text-base">
-            Papéis
-          </TabsTrigger>
-          <TabsTrigger value="addons" className="h-10 text-base">
-            Adicionais
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="papers" className="pt-4">
-          <div className="mb-3 flex justify-end">
-            <Button
-              onClick={() => {
-                setEditingPaper(null)
-                setPaperOpen(true)
-              }}
-            >
-              <Plus data-icon="inline-start" />
-              Novo papel
-            </Button>
-          </div>
-          <StatePanel loading={papers.loading} error={papers.error} empty={!papers.data?.length}>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {papers.data?.map((paper) => (
-                <Card key={paper.id} size="sm">
-                  <CardHeader>
-                    <CardTitle className="text-base">{paper.display_name}</CardTitle>
-                    <CardDescription>{money(paper.price_per_sheet)} por folha</CardDescription>
-                  </CardHeader>
-                  {paper.sheets_remaining != null && (
-                    <CardContent className="text-sm text-muted-foreground">
-                      {paper.sheets_remaining} folhas disponíveis
-                    </CardContent>
-                  )}
-                  <CardContent className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setEditingPaper(paper)
-                        setPaperOpen(true)
-                      }}
-                    >
-                      <Pencil data-icon="inline-start" />
-                      Editar
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeleting({ kind: 'paper', id: paper.id })}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </StatePanel>
-        </TabsContent>
-        <TabsContent value="addons" className="pt-4">
-          <div className="mb-3 flex justify-end">
-            <Button
-              onClick={() => {
-                setEditingAddon(null)
-                setAddonOpen(true)
-              }}
-            >
-              <Plus data-icon="inline-start" />
-              Novo adicional
-            </Button>
-          </div>
-          <StatePanel loading={addons.loading} error={addons.error} empty={!addons.data?.length}>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {addons.data?.map((addon) => (
-                <Card key={addon.id} size="sm">
-                  <CardHeader>
-                    <CardTitle className="text-base">{addon.name}</CardTitle>
-                    <CardDescription>
-                      {addonPriceTypes.find((option) => option.value === addon.price_type)?.label}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="text-lg font-semibold">
-                    {addon.price_type === 'percentage' ? `${addon.price_value}%` : money(addon.price_value)}
-                  </CardContent>
-                  <CardContent className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setEditingAddon(addon)
-                        setAddonOpen(true)
-                      }}
-                    >
-                      <Pencil data-icon="inline-start" />
-                      Editar
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeleting({ kind: 'addon', id: addon.id })}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </StatePanel>
-        </TabsContent>
-      </Tabs>
 
-      <PaperDialog
+      <section className="mb-8">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Papéis</h2>
+            <p className="text-sm text-muted-foreground">Tipos de papel e valores por folha.</p>
+          </div>
+          <Button
+            onClick={() => {
+              setEditingPaper(null)
+              setPaperOpen(true)
+            }}
+          >
+            <Plus data-icon="inline-start" />
+            Novo papel
+          </Button>
+        </div>
+        <StatePanel loading={papers.loading} error={papers.error} empty={!papers.data?.length}>
+          <div className="hidden overflow-x-auto rounded-lg border md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Preço por folha</TableHead>
+                  <TableHead>Folhas restantes</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {papers.data?.map((paper) => (
+                  <TableRow key={paper.id}>
+                    <TableCell className="font-medium">{paper.display_name}</TableCell>
+                    <TableCell>{money(paper.price_per_sheet)}</TableCell>
+                    <TableCell>{paper.sheets_remaining ?? '-'}</TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Editar ${paper.display_name}`}
+                          onClick={() => {
+                            setEditingPaper(paper)
+                            setPaperOpen(true)
+                          }}
+                        >
+                          <Pencil />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Excluir ${paper.display_name}`}
+                          onClick={() => setDeleting({ kind: 'paper', id: paper.id })}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 md:hidden">
+            {papers.data?.map((paper) => (
+              <Card key={paper.id} size="sm">
+                <CardHeader>
+                  <CardTitle className="text-base">{paper.display_name}</CardTitle>
+                  <CardDescription>{money(paper.price_per_sheet)} por folha</CardDescription>
+                </CardHeader>
+                {paper.sheets_remaining != null && (
+                  <CardContent className="text-sm text-muted-foreground">
+                    {paper.sheets_remaining} folhas disponíveis
+                  </CardContent>
+                )}
+                <CardContent className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditingPaper(paper)
+                      setPaperOpen(true)
+                    }}
+                  >
+                    <Pencil data-icon="inline-start" />
+                    Editar
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => setDeleting({ kind: 'paper', id: paper.id })}>
+                    <Trash2 />
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </StatePanel>
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Adicionais</h2>
+            <p className="text-sm text-muted-foreground">Taxas por folha, por impressão ou percentuais.</p>
+          </div>
+          <Button
+            onClick={() => {
+              setEditingAddon(null)
+              setAddonOpen(true)
+            }}
+          >
+            <Plus data-icon="inline-start" />
+            Novo adicional
+          </Button>
+        </div>
+        <StatePanel loading={addons.loading} error={addons.error} empty={!addons.data?.length}>
+          <div className="hidden overflow-x-auto rounded-lg border md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {addons.data?.map((addon) => (
+                  <TableRow key={addon.id}>
+                    <TableCell className="font-medium">{addon.name}</TableCell>
+                    <TableCell>{addonPriceTypes.find((option) => option.value === addon.price_type)?.label}</TableCell>
+                    <TableCell>
+                      {addon.price_type === 'percentage' ? `${addon.price_value}%` : money(addon.price_value)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Editar ${addon.name}`}
+                          onClick={() => {
+                            setEditingAddon(addon)
+                            setAddonOpen(true)
+                          }}
+                        >
+                          <Pencil />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Excluir ${addon.name}`}
+                          onClick={() => setDeleting({ kind: 'addon', id: addon.id })}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 md:hidden">
+            {addons.data?.map((addon) => (
+              <Card key={addon.id} size="sm">
+                <CardHeader>
+                  <CardTitle className="text-base">{addon.name}</CardTitle>
+                  <CardDescription>
+                    {addonPriceTypes.find((option) => option.value === addon.price_type)?.label}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-lg font-semibold">
+                  {addon.price_type === 'percentage' ? `${addon.price_value}%` : money(addon.price_value)}
+                </CardContent>
+                <CardContent className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditingAddon(addon)
+                      setAddonOpen(true)
+                    }}
+                  >
+                    <Pencil data-icon="inline-start" />
+                    Editar
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => setDeleting({ kind: 'addon', id: addon.id })}>
+                    <Trash2 />
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </StatePanel>
+      </section>
+
+      <PaperPanel
         open={paperOpen}
         onOpenChange={setPaperOpen}
         paper={editingPaper}
@@ -176,7 +255,7 @@ export function PrintingScreen() {
         busy={savePaper.busy}
         onSave={(payload) => void savePaper.run(payload)}
       />
-      <AddonDialog
+      <AddonPanel
         open={addonOpen}
         onOpenChange={setAddonOpen}
         addon={editingAddon}
@@ -196,7 +275,7 @@ export function PrintingScreen() {
   )
 }
 
-function PaperDialog({
+function PaperPanel({
   open,
   onOpenChange,
   paper,
@@ -224,47 +303,12 @@ function PaperDialog({
   }, [paper])
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{paper ? 'Editar papel' : 'Novo papel'}</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-3">
-          <Field label="Insumo vinculado">
-            <Select value={itemId} onChange={(event) => setItemId(event.target.value)}>
-              <option value="">Nome personalizado</option>
-              {insumos.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          {!itemId && (
-            <Field label="Nome personalizado">
-              <Input value={customName} onChange={(event) => setCustomName(event.target.value)} required />
-            </Field>
-          )}
-          <Field label="Preço por folha (R$)">
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              value={price}
-              onChange={(event) => setPrice(Number(event.target.value))}
-            />
-          </Field>
-          <Field label="Folhas disponíveis">
-            <Input
-              type="number"
-              min={0}
-              value={sheets}
-              onChange={(event) => setSheets(event.target.value)}
-              placeholder="Opcional"
-            />
-          </Field>
-        </div>
-        <DialogFooter>
+    <SidePanel
+      open={open}
+      onOpenChange={onOpenChange}
+      title={paper ? 'Editar papel' : 'Novo papel'}
+      footer={
+        <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
@@ -279,15 +323,51 @@ function PaperDialog({
               })
             }
           >
-            Salvar
+            {busy ? 'Salvando...' : 'Salvar'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      }
+    >
+      <div className="grid gap-3">
+        <Field label="Insumo vinculado">
+          <Select value={itemId} onChange={(event) => setItemId(event.target.value)}>
+            <option value="">Nome personalizado</option>
+            {insumos.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        {!itemId && (
+          <Field label="Nome personalizado">
+            <Input value={customName} onChange={(event) => setCustomName(event.target.value)} required />
+          </Field>
+        )}
+        <Field label="Preço por folha (R$)">
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            value={price}
+            onChange={(event) => setPrice(Number(event.target.value))}
+          />
+        </Field>
+        <Field label="Folhas disponíveis">
+          <Input
+            type="number"
+            min={0}
+            value={sheets}
+            onChange={(event) => setSheets(event.target.value)}
+            placeholder="Opcional"
+          />
+        </Field>
+      </div>
+    </SidePanel>
   )
 }
 
-function AddonDialog({
+function AddonPanel({
   open,
   onOpenChange,
   addon,
@@ -310,35 +390,12 @@ function AddonDialog({
   }, [addon])
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{addon ? 'Editar adicional' : 'Novo adicional'}</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-3">
-          <Field label="Nome">
-            <Input value={name} onChange={(event) => setName(event.target.value)} required />
-          </Field>
-          <Field label="Tipo">
-            <Select value={priceType} onChange={(event) => setPriceType(event.target.value)}>
-              {addonPriceTypes.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label={priceType === 'percentage' ? 'Percentual (%)' : 'Valor (R$)'}>
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              value={priceValue}
-              onChange={(event) => setPriceValue(Number(event.target.value))}
-            />
-          </Field>
-        </div>
-        <DialogFooter>
+    <SidePanel
+      open={open}
+      onOpenChange={onOpenChange}
+      title={addon ? 'Editar adicional' : 'Novo adicional'}
+      footer={
+        <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
@@ -346,10 +403,34 @@ function AddonDialog({
             disabled={busy || !name}
             onClick={() => onSave({ name, price_type: priceType, price_value: priceValue })}
           >
-            Salvar
+            {busy ? 'Salvando...' : 'Salvar'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      }
+    >
+      <div className="grid gap-3">
+        <Field label="Nome">
+          <Input value={name} onChange={(event) => setName(event.target.value)} required />
+        </Field>
+        <Field label="Tipo">
+          <Select value={priceType} onChange={(event) => setPriceType(event.target.value)}>
+            {addonPriceTypes.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label={priceType === 'percentage' ? 'Percentual (%)' : 'Valor (R$)'}>
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            value={priceValue}
+            onChange={(event) => setPriceValue(Number(event.target.value))}
+          />
+        </Field>
+      </div>
+    </SidePanel>
   )
 }

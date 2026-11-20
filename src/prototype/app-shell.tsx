@@ -1,9 +1,7 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   BarChart3,
-  Calculator,
   CircleDollarSign,
-  ClipboardList,
   History,
   Home,
   LayoutGrid,
@@ -33,7 +31,6 @@ const groups: { title: string; items: NavItem[] }[] = [
     title: 'Vendas',
     items: [
       { to: '/orders', label: 'Pedidos', icon: ShoppingCart },
-      { to: '/orders/create', label: 'Novo pedido', icon: Plus },
       { to: '/reports', label: 'Relatórios', icon: BarChart3 },
     ],
   },
@@ -43,8 +40,6 @@ const groups: { title: string; items: NavItem[] }[] = [
       { to: '/items', label: 'Itens', icon: Package },
       { to: '/printing', label: 'Impressão', icon: LayoutGrid },
       { to: '/clients', label: 'Clientes', icon: Users },
-      { to: '/pricing/table', label: 'Tabela de preços', icon: ClipboardList },
-      { to: '/pricing/calculator', label: 'Calculadora', icon: Calculator },
     ],
   },
   {
@@ -86,6 +81,13 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
 export function AppShell() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const userEmail = (() => {
+    try {
+      return (JSON.parse(localStorage.getItem('user') || '{}') as { email?: string }).email || ''
+    } catch {
+      return ''
+    }
+  })()
   const logout = async () => {
     await authApi.logout()
     navigate('/login', { replace: true })
@@ -116,6 +118,20 @@ export function AppShell() {
             </div>
           ))}
         </nav>
+        <div className="mt-auto border-t pt-3">
+          {userEmail && <p className="truncate px-3 pb-2 text-xs text-muted-foreground">{userEmail}</p>}
+          <button
+            type="button"
+            onClick={() => void logout()}
+            className={cn(
+              buttonVariants({ variant: 'ghost', size: 'default' }),
+              'h-11 w-full justify-start gap-3 px-3 text-base',
+            )}
+          >
+            <LogOut data-icon="inline-start" />
+            Sair
+          </button>
+        </div>
       </aside>
 
       <div className="flex min-h-dvh flex-col md:pl-60">
@@ -139,14 +155,13 @@ export function AppShell() {
               <Plus data-icon="inline-start" />
               Novo pedido
             </Link>
-            <Button variant="ghost" size="icon" aria-label="Sair" onClick={() => void logout()}>
-              <LogOut />
-            </Button>
           </div>
         </header>
 
         <main className="flex-1 px-4 py-5 pb-32 md:px-6 md:pb-8">
-          <Outlet />
+          <div className="mx-auto w-full max-w-6xl">
+            <Outlet />
+          </div>
         </main>
       </div>
 

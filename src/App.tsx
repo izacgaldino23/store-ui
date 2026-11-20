@@ -19,12 +19,6 @@ import {
 import { PrintingScreen } from './prototype/screens/printing'
 import { ClientsScreen } from './prototype/screens/clients'
 import {
-  CalculatorScreen,
-  EditPriceEntryScreen,
-  NewPriceEntryScreen,
-  PriceTableScreen,
-} from './prototype/screens/pricing'
-import {
   CashHistoryScreen,
   CurrentCashScreen,
   DailyReportScreen,
@@ -62,10 +56,6 @@ function App() {
           <Route path="items/:id" element={<ItemDetailScreen />} />
           <Route path="printing" element={<PrintingScreen />} />
           <Route path="clients" element={<ClientsScreen />} />
-          <Route path="pricing/table" element={<PriceTableScreen />} />
-          <Route path="pricing/table/create" element={<NewPriceEntryScreen />} />
-          <Route path="pricing/table/:id/edit" element={<EditPriceEntryScreen />} />
-          <Route path="pricing/calculator" element={<CalculatorScreen />} />
           <Route path="cash-flow/current" element={<CurrentCashScreen />} />
           <Route path="cash-flow/daily-report" element={<DailyReportScreen />} />
           <Route path="cash-flow/history" element={<CashHistoryScreen />} />

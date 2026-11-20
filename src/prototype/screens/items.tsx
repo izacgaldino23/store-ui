@@ -3,33 +3,45 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Download, Pencil, Plus } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { itemsApi } from '../api'
 import { itemTypes, money, shortDate } from '../constants'
-import { useAction, useApi } from '../hooks'
+import { useAction, useApi, useDebouncedValue } from '../hooks'
 import type { CatalogItem, ItemPayload, ItemType } from '../types'
-import {
-  ConfirmDialog,
-  Field,
-  LinkButton,
-  PageHeader,
-  Select,
-  StatePanel,
-  Textarea,
-} from '../ui'
+import { Field, LinkButton, PageHeader, Select, StatePanel, Textarea, ConfirmDialog } from '../ui'
+import { SidePanel } from '../side-panel'
+
+const emptyItem: ItemPayload = {
+  item_type: 'revenda',
+  name: '',
+  display_name: '',
+  keywords: '',
+  bar_code: '',
+  description: '',
+  cost_price: 0,
+  sale_price: null,
+  min_stock: 0,
+  unit: 'un',
+  supplier: '',
+  units_per_pack: 1,
+}
 
 export function ItemsScreen() {
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
   const [type, setType] = useState('')
   const [importOpen, setImportOpen] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [summary, setSummary] = useState('')
+  const [editingId, setEditingId] = useState<string | undefined>()
+  const [panelOpen, setPanelOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const { data, loading, error, reload } = useApi(
-    () => itemsApi.list({ search: search || undefined, type: type || undefined, limit: 100 }),
-    [search, type],
+    () => itemsApi.list({ search: debouncedSearch || undefined, type: type || undefined, limit: 100 }),
+    [debouncedSearch, type],
   )
   const remove = useAction(async () => {
     if (selected.length === 1) await itemsApi.remove(selected[0])
@@ -50,6 +62,11 @@ export function ItemsScreen() {
     if (file) void importCsv.run(file)
   }
 
+  const openPanel = (id?: string) => {
+    setEditingId(id)
+    setPanelOpen(true)
+  }
+
   return (
     <>
       <PageHeader
@@ -61,10 +78,10 @@ export function ItemsScreen() {
               <Download data-icon="inline-start" />
               Importar CSV
             </Button>
-            <LinkButton to="/items/create">
+            <Button onClick={() => openPanel()}>
               <Plus data-icon="inline-start" />
               Novo item
-            </LinkButton>
+            </Button>
           </div>
         }
       />
@@ -94,7 +111,61 @@ export function ItemsScreen() {
         )}
       </div>
       <StatePanel loading={loading} error={error} empty={!data?.items.length}>
-        <div className="flex flex-col gap-2">
+        <div className="hidden overflow-x-auto rounded-lg border md:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10" />
+                <TableHead>Código</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Preço</TableHead>
+                <TableHead>Estoque</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data?.items.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      aria-label={`Selecionar ${item.name}`}
+                      checked={selected.includes(item.id)}
+                      onChange={(event) =>
+                        setSelected((current) =>
+                          event.target.checked
+                            ? [...current, item.id]
+                            : current.filter((id) => id !== item.id),
+                        )
+                      }
+                    />
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">{item.code}</TableCell>
+                  <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell>{itemTypes.find((option) => option.value === item.item_type)?.label}</TableCell>
+                  <TableCell>{item.sale_price ? money(item.sale_price) : '-'}</TableCell>
+                  <TableCell>{item.item_type === 'revenda' ? item.current_stock ?? 0 : '-'}</TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" aria-label={`Editar ${item.name}`} onClick={() => openPanel(item.id)}>
+                        <Pencil />
+                      </Button>
+                      <Link
+                        to={`/items/${item.id}`}
+                        aria-label={`Detalhes de ${item.name}`}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                      >
+                        <ArrowLeft className="rotate-180" />
+                      </Link>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="flex flex-col gap-2 md:hidden">
           {data?.items.map((item) => (
             <Card key={item.id} size="sm">
               <CardContent className="flex items-center gap-3 py-3">
@@ -104,9 +175,7 @@ export function ItemsScreen() {
                   checked={selected.includes(item.id)}
                   onChange={(event) =>
                     setSelected((current) =>
-                      event.target.checked
-                        ? [...current, item.id]
-                        : current.filter((id) => id !== item.id),
+                      event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id),
                     )
                   }
                 />
@@ -122,13 +191,11 @@ export function ItemsScreen() {
                     <p className="text-sm text-muted-foreground">Estoque {item.current_stock ?? 0}</p>
                   )}
                 </div>
+                <Button variant="ghost" size="icon" aria-label={`Editar ${item.name}`} onClick={() => openPanel(item.id)}>
+                  <Pencil />
+                </Button>
                 <Link to={`/items/${item.id}`} className="text-sm underline underline-offset-4">
                   Detalhes
-                </Link>
-                <Link to={`/items/${item.id}/edit`} aria-label={`Editar ${item.name}`}>
-                  <Button variant="ghost" size="icon">
-                    <Pencil />
-                  </Button>
                 </Link>
               </CardContent>
             </Card>
@@ -136,6 +203,15 @@ export function ItemsScreen() {
         </div>
       </StatePanel>
 
+      <ItemPanel
+        open={panelOpen}
+        onOpenChange={setPanelOpen}
+        itemId={editingId}
+        onSaved={() => {
+          setPanelOpen(false)
+          reload()
+        }}
+      />
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
@@ -158,32 +234,32 @@ export function ItemsScreen() {
   )
 }
 
-export function NewItemScreen() {
-  return <ItemForm />
+function ItemPanel({
+  open,
+  onOpenChange,
+  itemId,
+  onSaved,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  itemId?: string
+  onSaved: () => void
+}) {
+  return (
+    <SidePanel
+      open={open}
+      onOpenChange={onOpenChange}
+      title={itemId ? 'Editar item' : 'Novo item'}
+      description="Campos obrigatórios marcados com *."
+    >
+      <ItemFields key={itemId ?? 'new'} id={itemId} onSaved={onSaved} />
+    </SidePanel>
+  )
 }
 
-export function EditItemScreen() {
-  const { id = '' } = useParams()
-  return <ItemForm id={id} />
-}
-
-function ItemForm({ id }: { id?: string }) {
-  const navigate = useNavigate()
+function ItemFields({ id, onSaved }: { id?: string; onSaved: () => void }) {
   const { data: item, loading } = useApi(() => (id ? itemsApi.get(id) : Promise.resolve(null)), [id])
-  const [form, setForm] = useState<ItemPayload>({
-    item_type: 'revenda',
-    name: '',
-    display_name: '',
-    keywords: '',
-    bar_code: '',
-    description: '',
-    cost_price: 0,
-    sale_price: null,
-    min_stock: 0,
-    unit: 'un',
-    supplier: '',
-    units_per_pack: 1,
-  })
+  const [form, setForm] = useState<ItemPayload>(emptyItem)
   useEffect(() => {
     if (!item) return
     setForm({
@@ -204,10 +280,124 @@ function ItemForm({ id }: { id?: string }) {
   const save = useAction(async () => {
     if (id) await itemsApi.update(id, form)
     else await itemsApi.create(form)
-    navigate('/items')
+    onSaved()
   })
   const update = (patch: Partial<ItemPayload>) => setForm((current) => ({ ...current, ...patch }))
 
+  return (
+    <form
+      onSubmit={(event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault()
+        void save.run()
+      }}
+      className="space-y-4"
+    >
+      {save.error && (
+        <Alert variant="destructive">
+          <AlertDescription>{save.error}</AlertDescription>
+        </Alert>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Tipo *">
+          <Select
+            value={form.item_type}
+            onChange={(event) => update({ item_type: event.target.value as ItemType })}
+          >
+            {itemTypes.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Nome *">
+          <Input value={form.name} required onChange={(event) => update({ name: event.target.value })} />
+        </Field>
+        <Field label="Nome de exibição">
+          <Input
+            value={form.display_name || ''}
+            onChange={(event) => update({ display_name: event.target.value })}
+          />
+        </Field>
+        <Field label="Código de barras">
+          <Input value={form.bar_code || ''} onChange={(event) => update({ bar_code: event.target.value })} />
+        </Field>
+        <Field label="Custo (R$)">
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            value={form.cost_price}
+            onChange={(event) => update({ cost_price: Number(event.target.value) })}
+          />
+        </Field>
+        <Field label="Preço de venda (R$)">
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            value={form.sale_price ?? ''}
+            onChange={(event) =>
+              update({ sale_price: event.target.value ? Number(event.target.value) : null })
+            }
+          />
+        </Field>
+        <Field label="Estoque mínimo">
+          <Input
+            type="number"
+            min={0}
+            value={form.min_stock}
+            onChange={(event) => update({ min_stock: Number(event.target.value) })}
+          />
+        </Field>
+        <Field label="Unidade *">
+          <Input value={form.unit} required onChange={(event) => update({ unit: event.target.value })} />
+        </Field>
+        <Field label="Unidades por pacote">
+          <Input
+            type="number"
+            min={1}
+            value={form.units_per_pack}
+            onChange={(event) => update({ units_per_pack: Number(event.target.value) })}
+          />
+        </Field>
+        <Field label="Fornecedor">
+          <Input value={form.supplier || ''} onChange={(event) => update({ supplier: event.target.value })} />
+        </Field>
+        <Field label="Palavras-chave">
+          <Input
+            value={form.keywords || ''}
+            maxLength={500}
+            onChange={(event) => update({ keywords: event.target.value })}
+          />
+        </Field>
+        <Field label="Descrição">
+          <Textarea value={form.description || ''} onChange={(event) => update({ description: event.target.value })} />
+        </Field>
+      </div>
+      <div className="flex gap-2">
+        <Button type="submit" size="lg" className="h-11" disabled={save.busy || loading}>
+          {save.busy ? 'Salvando...' : 'Salvar'}
+        </Button>
+        <Button type="button" variant="outline" size="lg" className="h-11" onClick={onSaved}>
+          Cancelar
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+export function NewItemScreen() {
+  return <ItemForm />
+}
+
+export function EditItemScreen() {
+  const { id = '' } = useParams()
+  return <ItemForm id={id} />
+}
+
+function ItemForm({ id }: { id?: string }) {
+  const navigate = useNavigate()
   return (
     <>
       <Button variant="ghost" onClick={() => navigate('/items')} className="mb-3">
@@ -215,113 +405,9 @@ function ItemForm({ id }: { id?: string }) {
         Itens
       </Button>
       <PageHeader title={id ? 'Editar item' : 'Novo item'} />
-      {save.error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{save.error}</AlertDescription>
-        </Alert>
-      )}
-      <form
-        onSubmit={(event: FormEvent<HTMLFormElement>) => {
-          event.preventDefault()
-          void save.run()
-        }}
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle>Dados do item</CardTitle>
-            <CardDescription>Campos obrigatórios marcados com *.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <Field label="Tipo *">
-              <Select
-                value={form.item_type}
-                onChange={(event) => update({ item_type: event.target.value as ItemType })}
-              >
-                {itemTypes.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Nome *">
-              <Input value={form.name} required onChange={(event) => update({ name: event.target.value })} />
-            </Field>
-            <Field label="Nome de exibição">
-              <Input
-                value={form.display_name || ''}
-                onChange={(event) => update({ display_name: event.target.value })}
-              />
-            </Field>
-            <Field label="Código de barras">
-              <Input value={form.bar_code || ''} onChange={(event) => update({ bar_code: event.target.value })} />
-            </Field>
-            <Field label="Custo (R$)">
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.cost_price}
-                onChange={(event) => update({ cost_price: Number(event.target.value) })}
-              />
-            </Field>
-            <Field label="Preço de venda (R$)">
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.sale_price ?? ''}
-                onChange={(event) =>
-                  update({ sale_price: event.target.value ? Number(event.target.value) : null })
-                }
-              />
-            </Field>
-            <Field label="Estoque mínimo">
-              <Input
-                type="number"
-                min={0}
-                value={form.min_stock}
-                onChange={(event) => update({ min_stock: Number(event.target.value) })}
-              />
-            </Field>
-            <Field label="Unidade *">
-              <Input value={form.unit} required onChange={(event) => update({ unit: event.target.value })} />
-            </Field>
-            <Field label="Unidades por pacote">
-              <Input
-                type="number"
-                min={1}
-                value={form.units_per_pack}
-                onChange={(event) => update({ units_per_pack: Number(event.target.value) })}
-              />
-            </Field>
-            <Field label="Fornecedor">
-              <Input value={form.supplier || ''} onChange={(event) => update({ supplier: event.target.value })} />
-            </Field>
-            <Field label="Palavras-chave" >
-              <Input
-                value={form.keywords || ''}
-                maxLength={500}
-                onChange={(event) => update({ keywords: event.target.value })}
-              />
-            </Field>
-            <Field label="Descrição">
-              <Textarea
-                value={form.description || ''}
-                onChange={(event) => update({ description: event.target.value })}
-              />
-            </Field>
-          </CardContent>
-          <CardContent className="flex gap-2">
-            <Button type="submit" size="lg" disabled={save.busy || loading}>
-              {save.busy ? 'Salvando...' : 'Salvar'}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => navigate('/items')}>
-              Cancelar
-            </Button>
-          </CardContent>
-        </Card>
-      </form>
+      <div className="max-w-4xl">
+        <ItemFields id={id} onSaved={() => navigate('/items')} />
+      </div>
     </>
   )
 }
@@ -359,9 +445,7 @@ export function ItemDetailScreen() {
               Editar
             </LinkButton>
             {item.item_type === 'revenda' && (
-              <Button onClick={() => setAdjustOpen(true)}>
-                Ajustar estoque
-              </Button>
+              <Button onClick={() => setAdjustOpen(true)}>Ajustar estoque</Button>
             )}
           </div>
         }
@@ -443,7 +527,41 @@ export function LowStockScreen() {
         </Alert>
       )}
       <StatePanel loading={loading} error={error} empty={!data?.length}>
-        <div className="flex flex-col gap-2">
+        <div className="hidden overflow-x-auto rounded-lg border md:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Código</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>Estoque</TableHead>
+                <TableHead>Mínimo</TableHead>
+                <TableHead className="text-right">Ação</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data?.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-mono text-xs">{item.code}</TableCell>
+                  <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell>{item.current_stock ?? 0}</TableCell>
+                  <TableCell>{item.min_stock}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setAdjusting(item)
+                        setQuantity(Math.max(1, item.min_stock - (item.current_stock ?? 0)))
+                      }}
+                    >
+                      Repor
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="flex flex-col gap-2 md:hidden">
           {data?.map((item) => (
             <Card key={item.id} size="sm">
               <CardContent className="flex items-center gap-3 py-3">

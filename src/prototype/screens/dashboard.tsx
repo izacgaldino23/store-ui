@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
-import { ClipboardList, Package, Plus, ShoppingCart, Wallet } from 'lucide-react'
+import { ClipboardList, Package, ShoppingCart, Wallet } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { itemsApi, ordersApi, reportsApi } from '../api'
 import { money } from '../constants'
 import { useApi } from '../hooks'
-import { LinkButton, MoneyCard, PageHeader, StatePanel } from '../ui'
+import { MoneyCard, PageHeader, StatePanel } from '../ui'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -20,16 +20,7 @@ export function DashboardScreen() {
 
   return (
     <>
-      <PageHeader
-        title="Visão geral"
-        description="Resumo do negócio em tempo real."
-        action={
-          <LinkButton to="/orders/create">
-            <Plus data-icon="inline-start" />
-            Novo pedido
-          </LinkButton>
-        }
-      />
+      <PageHeader title="Visão geral" description="Resumo do negócio em tempo real." />
       <StatePanel loading={loading} error={error}>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MoneyCard

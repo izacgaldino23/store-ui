@@ -14,7 +14,7 @@
 - **HTTP:** Axios instance in `src/providers/rest-client.ts` (Bearer token, refresh-on-401 with one retry, `X-Timezone`, PT-BR error translation)
 - **Language:** TypeScript
 - **Package manager:** bun
-- **Deploy/preview:** Cloudflare Workers Previews via `npx wrangler preview`; `wrangler.json` has `previews: {}` and SPA fallback to `dist`.
+- **Deploy/preview:** Cloudflare Workers Previews via `npx wrangler preview`; `wrangler.json` has `previews: {}` and SPA fallback to `dist`. Branch `develop` preview: `https://develop-store-ui.izacgaldino.workers.dev`.
 
 ## Architecture
 
@@ -34,10 +34,12 @@ store-ui/
 │       ├── api.ts                  # every API call, grouped by domain
 │       ├── types.ts                # API payload/response types
 │       ├── constants.ts            # labels + money/print/discount helpers
-│       ├── hooks.ts                # useApi/useAction
+│       ├── hooks.ts                # useApi/useAction/useDebouncedValue
 │       ├── ui.tsx                  # PageHeader, Field, StatePanel, dialogs
+│       ├── side-panel.tsx          # right-side edit panel
+│       ├── client-dialog.tsx       # shared client form
 │       └── screens/                # auth, dashboard, orders, items, printing,
-│                                   # clients, pricing, cashflow, reports
+│                                   # clients, cashflow, reports
 ├── wrangler.json
 └── package.json
 ```
@@ -46,7 +48,7 @@ store-ui/
 
 Backend Go Fiber at `http://localhost:8080`. All endpoints except `/auth/*` are JWT-protected.
 
-List responses are unwrapped in `prototype/api.ts` (`items`, `orders`, `papers`, `addons`, `clients`, `registers`, `entries`, `expenses`).
+List responses are unwrapped in `prototype/api.ts` (`items`, `orders`, `papers`, `addons`, `clients`, `registers`, `expenses`).
 
 ## Auth flow
 
@@ -58,7 +60,7 @@ List responses are unwrapped in `prototype/api.ts` (`items`, `orders`, `papers`,
 
 ## Orders (PDV)
 
-- New order: tabs **Produtos** / **Impressões** / **Detalhes**, with quantity badges and a sticky total bar.
+- New order is a 2-step wizard: **Produtos e impressões** → **Detalhes**, with a sticky footer carrying total, `Salvar rascunho` and `Continuar`/`Finalizar`. Product search waits 500 ms after typing ends and needs at least 2 characters.
 - Discount uses `discount_type` (`valor`|`percentual`) + `discount_value`; total = subtotal − discount.
 - Print pricing: `computePrintTotal` uses paper base + addons and charges `per_print` once per print line, independent of sheets.
 - Save draft sends `status: 'rascunho'`.
@@ -72,7 +74,7 @@ List responses are unwrapped in `prototype/api.ts` (`items`, `orders`, `papers`,
 - Types are plain TS types (no `I` prefix requirement in the new UI).
 - All UI text and errors in Portuguese.
 - Error mapping prefers the known `code` translation, falling back to the API message.
-- Env var: `VITE_API_URL` (Vite-only prefix).
+- Env var: `VITE_API_URL` — origin only, no `/api` and no trailing slash (`https://store-api-c8m8.onrender.com`); the client appends `/api`.
 
 ## Pre-commit validation
 
