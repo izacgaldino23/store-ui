@@ -1,15 +1,41 @@
+import type { ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './prototype/app-shell'
+import { LoginScreen, RegisterScreen } from './prototype/screens/auth'
+import { DashboardScreen } from './prototype/screens/dashboard'
 import {
-  DashboardScreen,
-  ItemsScreen,
-  LoginScreen,
+  EditOrderScreen,
   NewOrderScreen,
   OrderDetailScreen,
   OrdersScreen,
-  PlaceholderScreen,
-  RegisterScreen,
-} from './prototype/screens'
+} from './prototype/screens/orders'
+import {
+  EditItemScreen,
+  ItemDetailScreen,
+  ItemsScreen,
+  LowStockScreen,
+  NewItemScreen,
+} from './prototype/screens/items'
+import { PrintingScreen } from './prototype/screens/printing'
+import { ClientsScreen } from './prototype/screens/clients'
+import {
+  CalculatorScreen,
+  EditPriceEntryScreen,
+  NewPriceEntryScreen,
+  PriceTableScreen,
+} from './prototype/screens/pricing'
+import {
+  CashHistoryScreen,
+  CurrentCashScreen,
+  DailyReportScreen,
+  ExpensesScreen,
+} from './prototype/screens/cashflow'
+import { ReportsScreen } from './prototype/screens/reports'
+
+function RequireAuth({ children }: { children: ReactNode }) {
+  if (!localStorage.getItem('access_token')) return <Navigate to="/login" replace />
+  return <>{children}</>
+}
 
 function App() {
   return (
@@ -17,28 +43,34 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/register" element={<RegisterScreen />} />
-        <Route element={<AppShell />}>
+        <Route
+          element={
+            <RequireAuth>
+              <AppShell />
+            </RequireAuth>
+          }
+        >
           <Route index element={<DashboardScreen />} />
           <Route path="orders" element={<OrdersScreen />} />
           <Route path="orders/create" element={<NewOrderScreen />} />
-          <Route path="orders/:id/edit" element={<PlaceholderScreen title="Editar pedido" />} />
+          <Route path="orders/:id/edit" element={<EditOrderScreen />} />
           <Route path="orders/:id" element={<OrderDetailScreen />} />
           <Route path="items" element={<ItemsScreen />} />
-          <Route path="items/create" element={<PlaceholderScreen title="Novo item" />} />
-          <Route path="items/low-stock" element={<PlaceholderScreen title="Estoque baixo" />} />
-          <Route path="items/:id/edit" element={<PlaceholderScreen title="Editar item" />} />
-          <Route path="items/:id" element={<PlaceholderScreen title="Detalhes do item" />} />
-          <Route path="printing" element={<PlaceholderScreen title="Impressão" />} />
-          <Route path="clients" element={<PlaceholderScreen title="Clientes" />} />
-          <Route path="pricing/table" element={<PlaceholderScreen title="Tabela de preços" />} />
-          <Route path="pricing/table/create" element={<PlaceholderScreen title="Novo preço" />} />
-          <Route path="pricing/table/:id/edit" element={<PlaceholderScreen title="Editar preço" />} />
-          <Route path="pricing/calculator" element={<PlaceholderScreen title="Calculadora de margem" />} />
-          <Route path="cash-flow/current" element={<PlaceholderScreen title="Caixa atual" />} />
-          <Route path="cash-flow/daily-report" element={<PlaceholderScreen title="Relatório diário" />} />
-          <Route path="cash-flow/history" element={<PlaceholderScreen title="Histórico do caixa" />} />
-          <Route path="cash-flow/expenses" element={<PlaceholderScreen title="Despesas" />} />
-          <Route path="reports" element={<PlaceholderScreen title="Relatórios" />} />
+          <Route path="items/create" element={<NewItemScreen />} />
+          <Route path="items/low-stock" element={<LowStockScreen />} />
+          <Route path="items/:id/edit" element={<EditItemScreen />} />
+          <Route path="items/:id" element={<ItemDetailScreen />} />
+          <Route path="printing" element={<PrintingScreen />} />
+          <Route path="clients" element={<ClientsScreen />} />
+          <Route path="pricing/table" element={<PriceTableScreen />} />
+          <Route path="pricing/table/create" element={<NewPriceEntryScreen />} />
+          <Route path="pricing/table/:id/edit" element={<EditPriceEntryScreen />} />
+          <Route path="pricing/calculator" element={<CalculatorScreen />} />
+          <Route path="cash-flow/current" element={<CurrentCashScreen />} />
+          <Route path="cash-flow/daily-report" element={<DailyReportScreen />} />
+          <Route path="cash-flow/history" element={<CashHistoryScreen />} />
+          <Route path="cash-flow/expenses" element={<ExpensesScreen />} />
+          <Route path="reports" element={<ReportsScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { API_URL } from '../config';
-import { translateError } from './error-mapping';
+import { errorMessages, translateError } from './error-mapping';
+
+const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
 const apiClient = axios.create({
   baseURL: `${API_URL}/api`,
@@ -12,6 +14,7 @@ apiClient.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  config.headers['X-Timezone'] = timezone;
   return config;
 });
 
@@ -41,6 +44,9 @@ apiClient.interceptors.response.use(
       } catch {
         localStorage.removeItem('access_token');
         localStorage.removeItem('user');
+        if (!['/login', '/register'].includes(window.location.pathname)) {
+          window.location.assign('/login');
+        }
         return Promise.reject(error);
       }
     }
@@ -52,10 +58,10 @@ apiClient.interceptors.response.use(
 
     const data = error.response?.data;
     const code = data?.code;
-    if (data?.message) {
-      error.message = data.message;
-    } else if (code) {
+    if (code && errorMessages[code]) {
       error.message = translateError(code);
+    } else if (data?.message) {
+      error.message = data.message;
     }
 
     return Promise.reject(error);

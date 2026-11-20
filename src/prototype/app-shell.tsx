@@ -1,17 +1,22 @@
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   BarChart3,
+  Calculator,
   CircleDollarSign,
   ClipboardList,
+  History,
   Home,
   LayoutGrid,
+  LogOut,
   Package,
   Plus,
+  ReceiptText,
   ShoppingCart,
   Users,
 } from 'lucide-react'
-import { buttonVariants } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { authApi } from './api'
 
 interface NavItem {
   to: string
@@ -39,12 +44,15 @@ const groups: { title: string; items: NavItem[] }[] = [
       { to: '/printing', label: 'Impressão', icon: LayoutGrid },
       { to: '/clients', label: 'Clientes', icon: Users },
       { to: '/pricing/table', label: 'Tabela de preços', icon: ClipboardList },
+      { to: '/pricing/calculator', label: 'Calculadora', icon: Calculator },
     ],
   },
   {
     title: 'Caixa',
     items: [
       { to: '/cash-flow/current', label: 'Caixa atual', icon: CircleDollarSign },
+      { to: '/cash-flow/daily-report', label: 'Relatório diário', icon: ReceiptText },
+      { to: '/cash-flow/history', label: 'Histórico', icon: History },
       { to: '/cash-flow/expenses', label: 'Despesas', icon: CircleDollarSign },
     ],
   },
@@ -77,6 +85,11 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
 
 export function AppShell() {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const logout = async () => {
+    await authApi.logout()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <div className="min-h-dvh bg-muted/30">
@@ -107,22 +120,29 @@ export function AppShell() {
 
       <div className="flex min-h-dvh flex-col md:pl-60">
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background px-4 md:px-6">
-          <Link to="/" className="flex items-center gap-2 md:hidden">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-              M
-            </span>
-            <span className="font-semibold">Miau Store</span>
-          </Link>
-          <p className="hidden text-sm text-muted-foreground md:block">
-            Protótipo M-003 · dados de demonstração
-          </p>
-          <Link
-            to="/orders/create"
-            className={cn(buttonVariants({ size: 'lg' }), 'hidden md:inline-flex')}
-          >
-            <Plus data-icon="inline-start" />
-            Novo pedido
-          </Link>
+          <div className="flex items-center gap-2 md:hidden">
+            <Link to="/" className="flex items-center gap-2">
+              <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
+                M
+              </span>
+              <span className="font-semibold">Miau Store</span>
+            </Link>
+            <Button variant="ghost" size="icon" aria-label="Sair" onClick={() => void logout()}>
+              <LogOut />
+            </Button>
+          </div>
+          <div className="hidden items-center gap-2 md:flex">
+            <Link
+              to="/orders/create"
+              className={cn(buttonVariants({ size: 'lg' }))}
+            >
+              <Plus data-icon="inline-start" />
+              Novo pedido
+            </Link>
+            <Button variant="ghost" size="icon" aria-label="Sair" onClick={() => void logout()}>
+              <LogOut />
+            </Button>
+          </div>
         </header>
 
         <main className="flex-1 px-4 py-5 pb-32 md:px-6 md:pb-8">
