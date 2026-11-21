@@ -41,7 +41,7 @@ export function DashboardScreen() {
           />
         </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          <Card>
+          <Card className="hidden lg:block">
             <CardHeader>
               <CardTitle>Atalhos</CardTitle>
               <CardDescription>O que você mais usa no dia a dia.</CardDescription>

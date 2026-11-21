@@ -168,15 +168,25 @@ export function Pagination({
   const pages = Math.max(1, Math.ceil(total / limit))
   if (pages <= 1) return null
   return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-      <span className="text-muted-foreground">
+    <div className="mt-4 flex flex-col items-center gap-3 text-sm sm:flex-row sm:flex-wrap sm:justify-between">
+      <span className="text-center text-muted-foreground sm:text-left">
         Página {page} de {pages} · {total} registros
       </span>
-      <div className="flex gap-2">
-        <Button variant="outline" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+      <div className="flex w-full gap-2 sm:w-auto">
+        <Button
+          variant="outline"
+          className="flex-1 sm:flex-none"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
           Anterior
         </Button>
-        <Button variant="outline" disabled={page >= pages} onClick={() => onPageChange(page + 1)}>
+        <Button
+          variant="outline"
+          className="flex-1 sm:flex-none"
+          disabled={page >= pages}
+          onClick={() => onPageChange(page + 1)}
+        >
           Próxima
         </Button>
       </div>

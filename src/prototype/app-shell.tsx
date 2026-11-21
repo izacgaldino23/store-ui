@@ -158,9 +158,20 @@ export function AppShell() {
               </span>
               <span className="font-semibold">Miau Store</span>
             </Link>
-            <Button variant="ghost" size="icon" aria-label="Sair" onClick={() => void logout()}>
-              <LogOut />
-            </Button>
+            <div className="ml-auto flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+                title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+                onClick={toggleTheme}
+              >
+                {theme === 'dark' ? <Sun /> : <Moon />}
+              </Button>
+              <Button variant="ghost" size="icon" aria-label="Sair" onClick={() => void logout()}>
+                <LogOut />
+              </Button>
+            </div>
           </div>
           <div className="hidden items-center gap-2 md:flex">
             <Link
@@ -173,14 +184,14 @@ export function AppShell() {
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-5 pb-32 md:px-6 md:pb-8">
+        <main className="flex-1 px-4 py-5 pb-[calc(9rem+env(safe-area-inset-bottom))] md:px-6 md:pb-8">
           <div className="mx-auto w-full max-w-6xl">
             <Outlet />
           </div>
         </main>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around border-t bg-background/95 px-1 py-1 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around border-t bg-background/95 px-1 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))] backdrop-blur md:hidden">
         {bottomNav.map((item) => {
           const Icon = item.icon
           const active = pathname === item.to

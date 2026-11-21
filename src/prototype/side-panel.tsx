@@ -48,7 +48,7 @@ export function SidePanel({
                 <button
                   type="button"
                   aria-label="Fechar"
-                  className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
                 />
               }
             >

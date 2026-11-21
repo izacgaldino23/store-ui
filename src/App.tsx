@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './prototype/app-shell'
+import { useTheme } from './prototype/hooks'
 import { LoginScreen, RegisterScreen } from './prototype/screens/auth'
 import { DashboardScreen } from './prototype/screens/dashboard'
 import {
@@ -32,6 +33,7 @@ function RequireAuth({ children }: { children: ReactNode }) {
 }
 
 function App() {
+  useTheme()
   return (
     <BrowserRouter>
       <Routes>

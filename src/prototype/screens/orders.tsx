@@ -96,7 +96,7 @@ export function OrdersScreen() {
             </option>
           ))}
         </Select>
-        <Button variant="outline" className="ml-auto" onClick={reload}>
+        <Button variant="outline" className="w-full sm:ml-auto sm:w-auto" onClick={reload}>
           Atualizar
         </Button>
       </div>
@@ -551,35 +551,39 @@ function OrderForm({ orderId }: { orderId?: string }) {
             <div className="flex flex-col gap-2">
               {cart.map((line) => (
                 <Card key={line.item_id} size="sm">
-                  <CardContent className="flex items-center gap-3 py-3">
-                    <div className="min-w-0 flex-1">
+                  <CardContent className="flex flex-wrap items-center gap-2 py-3 sm:flex-nowrap sm:gap-3">
+                    <div className="min-w-0 flex-1 basis-full sm:basis-auto">
                       <p className="truncate font-medium">{line.name}</p>
                       <p className="text-sm text-muted-foreground">{money(line.unit_price)} / un.</p>
                     </div>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={line.quantity}
-                      onChange={(event) => {
-                        const quantity = Math.max(1, Number(event.target.value))
-                        setCart((current) =>
-                          current.map((item) =>
-                            item.item_id === line.item_id ? { ...item, quantity } : item,
-                          ),
-                        )
-                      }}
-                      className="w-20 text-center"
-                    />
-                    <span className="w-24 text-right font-semibold">
-                      {money(line.unit_price * line.quantity)}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setCart((current) => current.filter((item) => item.item_id !== line.item_id))}
-                    >
-                      <Trash2 />
-                    </Button>
+                    <div className="flex flex-1 items-center gap-2 sm:flex-none">
+                      <Input
+                        type="number"
+                        min={1}
+                        value={line.quantity}
+                        onChange={(event) => {
+                          const quantity = Math.max(1, Number(event.target.value))
+                          setCart((current) =>
+                            current.map((item) =>
+                              item.item_id === line.item_id ? { ...item, quantity } : item,
+                            ),
+                          )
+                        }}
+                        className="w-20 text-center"
+                      />
+                      <span className="min-w-24 flex-1 text-right font-semibold sm:flex-none">
+                        {money(line.unit_price * line.quantity)}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() =>
+                          setCart((current) => current.filter((item) => item.item_id !== line.item_id))
+                        }
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -660,9 +664,10 @@ function OrderForm({ orderId }: { orderId?: string }) {
                       <span className="font-medium">Adicionais</span>
                       <div className="flex flex-wrap gap-2">
                         {addonOptions.map((addon) => (
-                          <label key={addon.id} className="flex items-center gap-1 text-sm">
+                          <label key={addon.id} className="flex min-h-11 items-center gap-2 pr-2 text-sm">
                             <input
                               type="checkbox"
+                              className="size-5 accent-primary"
                               checked={line.addon_ids.includes(addon.id)}
                               onChange={(event) =>
                                 setPrints((current) =>
@@ -706,7 +711,7 @@ function OrderForm({ orderId }: { orderId?: string }) {
 
         {step === 'detalhes' && (
           <section className="space-y-4">
-            <div className="flex items-end gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <div className="flex-1">
                 <span className="mb-1.5 block text-sm font-medium">Cliente</span>
                 <Select value={clientId} onChange={(event) => setClientId(event.target.value)}>
@@ -718,7 +723,12 @@ function OrderForm({ orderId }: { orderId?: string }) {
                   ))}
                 </Select>
               </div>
-              <Button type="button" variant="outline" className="h-11" onClick={() => setClientOpen(true)}>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 w-full sm:w-auto"
+                onClick={() => setClientOpen(true)}
+              >
                 Novo cliente
               </Button>
             </div>
@@ -770,20 +780,20 @@ function OrderForm({ orderId }: { orderId?: string }) {
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-14 z-30 border-t bg-background shadow-lg md:bottom-0 md:left-60">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
-          <div>
+      <div className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 border-t bg-background shadow-lg md:bottom-0 md:left-60">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2 px-4 py-3 sm:flex-nowrap sm:justify-between sm:gap-3">
+          <div className="min-w-24 flex-1 sm:flex-none">
             <p className="text-sm text-muted-foreground">Total</p>
             <p className="text-2xl font-semibold">{money(total)}</p>
             {save.error && <p className="text-xs text-destructive">{save.error}</p>}
           </div>
-          <div className="flex gap-2">
+          <div className="flex w-full gap-2 sm:w-auto">
             {step === 'detalhes' && (
               <Button
                 type="button"
                 variant="ghost"
                 size="lg"
-                className="h-11"
+                className="h-11 flex-1 sm:flex-none"
                 onClick={() => setStep('itens')}
               >
                 Voltar
@@ -793,17 +803,18 @@ function OrderForm({ orderId }: { orderId?: string }) {
               type="button"
               variant="outline"
               size="lg"
-              className="h-11"
+              className="h-11 flex-1 sm:flex-none"
               disabled={save.busy || invalid}
               onClick={() => void save.run()}
             >
-              Salvar rascunho
+              <span className="sm:hidden">Rascunho</span>
+              <span className="hidden sm:inline">Salvar rascunho</span>
             </Button>
             {step === 'itens' ? (
               <Button
                 type="button"
                 size="lg"
-                className="h-11 px-5"
+                className="h-11 flex-[1.5] px-3 sm:flex-none sm:px-5"
                 disabled={subtotal <= 0}
                 onClick={() => setStep('detalhes')}
               >
@@ -813,7 +824,7 @@ function OrderForm({ orderId }: { orderId?: string }) {
               <Button
                 type="button"
                 size="lg"
-                className="h-11 px-5"
+                className="h-11 flex-[1.5] px-3 sm:flex-none sm:px-5"
                 disabled={finalize.busy || invalid}
                 onClick={() => setPaymentOpen(true)}
               >

@@ -156,6 +156,7 @@ export function ItemsScreen() {
                   <TableCell>
                     <input
                       type="checkbox"
+                      className="size-5 cursor-pointer accent-primary"
                       aria-label={`Selecionar ${item.name}`}
                       checked={selected.includes(item.id)}
                       onChange={(event) =>
@@ -180,7 +181,7 @@ export function ItemsScreen() {
                       <Link
                         to={`/items/${item.id}`}
                         aria-label={`Detalhes de ${item.name}`}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                        className="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
                       >
                         <ArrowLeft className="rotate-180" />
                       </Link>
@@ -195,16 +196,19 @@ export function ItemsScreen() {
           {data?.items.map((item) => (
             <Card key={item.id} size="sm">
               <CardContent className="flex items-center gap-3 py-3">
-                <input
-                  type="checkbox"
-                  aria-label={`Selecionar ${item.name}`}
-                  checked={selected.includes(item.id)}
-                  onChange={(event) =>
-                    setSelected((current) =>
-                      event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id),
-                    )
-                  }
-                />
+                <label className="flex h-11 items-center">
+                  <input
+                    type="checkbox"
+                    className="size-5 shrink-0 cursor-pointer accent-primary"
+                    aria-label={`Selecionar ${item.name}`}
+                    checked={selected.includes(item.id)}
+                    onChange={(event) =>
+                      setSelected((current) =>
+                        event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id),
+                      )
+                    }
+                  />
+                </label>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{item.name}</p>
                   <p className="text-sm text-muted-foreground">

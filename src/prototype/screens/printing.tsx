@@ -50,12 +50,13 @@ export function PrintingScreen() {
       <PageHeader title="Impressão" description="Papéis, insumos e adicionais de impressão." />
 
       <section className="mb-8">
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <div>
             <h2 className="text-lg font-semibold">Papéis</h2>
             <p className="text-sm text-muted-foreground">Tipos de papel e valores por folha.</p>
           </div>
           <Button
+            className="w-full sm:w-auto"
             onClick={() => {
               setEditingPaper(null)
               setPaperOpen(true)
@@ -151,12 +152,13 @@ export function PrintingScreen() {
       </section>
 
       <section>
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <div>
             <h2 className="text-lg font-semibold">Adicionais</h2>
             <p className="text-sm text-muted-foreground">Taxas por folha, por impressão ou percentuais.</p>
           </div>
           <Button
+            className="w-full sm:w-auto"
             onClick={() => {
               setEditingAddon(null)
               setAddonOpen(true)
