@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Pencil, Plus, ReceiptText, Trash2 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { clientsApi, itemsApi, ordersApi, printingApi } from '../api'
 import { ClientDialog, type ClientPayload } from '../client-dialog'
+import { ReceiptDialog } from '../receipt'
 import {
   computeDiscountAmount,
   computePrintTotal,
@@ -164,6 +165,7 @@ export function OrderDetailScreen() {
   const navigate = useNavigate()
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
+  const [receiptOpen, setReceiptOpen] = useState(false)
   const { data: order, loading, error, reload } = useApi(() => ordersApi.get(id), [id])
   const finalize = useAction((method: string) => ordersApi.finalize(id, method))
   const cancel = useAction(() => ordersApi.cancel(id, 'Cancelado pelo PDV'))
@@ -191,7 +193,17 @@ export function OrderDetailScreen() {
       <PageHeader
         title={`Pedido ${order.id.slice(0, 8)}`}
         description={`${order.client_name || 'Balcão'} · ${shortDate(order.created_at)}`}
-        action={<StatusBadge status={order.status} />}
+        action={
+          <div className="flex items-center gap-2">
+            {order.status !== 'cancelado' && (
+              <Button variant="outline" onClick={() => setReceiptOpen(true)}>
+                <ReceiptText data-icon="inline-start" />
+                Recibo
+              </Button>
+            )}
+            <StatusBadge status={order.status} />
+          </div>
+        }
       />
       {order.status === 'entregue' && (
         <Alert className="mb-4">
@@ -296,6 +308,7 @@ export function OrderDetailScreen() {
         </Card>
       </div>
 
+      <ReceiptDialog order={order} open={receiptOpen} onOpenChange={setReceiptOpen} />
       <PaymentDialog
         open={paymentOpen}
         onOpenChange={setPaymentOpen}

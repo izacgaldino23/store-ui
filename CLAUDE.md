@@ -38,6 +38,7 @@ store-ui/
 │       ├── ui.tsx                  # PageHeader, Field, StatePanel, dialogs
 │       ├── side-panel.tsx          # right-side edit panel
 │       ├── client-dialog.tsx       # shared client form
+│       ├── receipt.tsx             # 80 mm receipt dialog: print + PNG download
 │       └── screens/                # auth, dashboard, orders, items, printing,
 │                                   # clients, cashflow, reports
 ├── wrangler.json
@@ -67,6 +68,7 @@ List responses are unwrapped in `prototype/api.ts` (`items`, `orders`, `papers`,
 - Finalize sends `POST /api/orders/:id/finalize` with one payment method (`pix|dinheiro|credito|debito`); API replaces payments, sets status `entregue` and deducts resale stock atomically.
 - Only drafts can be finalized (`pendente → entregue` is not a valid transition).
 - Delivered orders are read-only.
+- `Recibo` on the order detail opens an 80 mm receipt with print and PNG download; discount breakdown appears only when a discount exists.
 
 ## Conventions
 
