@@ -286,7 +286,7 @@ export function OrderDetailScreen() {
             {order.status === 'rascunho' && (
               <Button
                 size="lg"
-                className="h-12 w-full text-base"
+                className="h-12 text-base"
                 disabled={finalize.busy}
                 onClick={() => setPaymentOpen(true)}
               >
