@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 import { X } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { DialogOverlay, DialogPortal } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
@@ -11,6 +12,7 @@ export function SidePanel({
   description,
   children,
   footer,
+  error,
   className,
 }: {
   open: boolean
@@ -19,6 +21,7 @@ export function SidePanel({
   description?: string
   children: ReactNode
   footer?: ReactNode
+  error?: string
   className?: string
 }) {
   return (
@@ -52,7 +55,14 @@ export function SidePanel({
               <X />
             </DialogPrimitive.Close>
           </div>
-          <div className="flex-1 overflow-y-auto p-5">{children}</div>
+          <div className="flex-1 overflow-y-auto p-5">
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {children}
+          </div>
           {footer && <div className="border-t bg-muted/50 p-4">{footer}</div>}
         </DialogPrimitive.Popup>
       </DialogPortal>

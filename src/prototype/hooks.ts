@@ -56,6 +56,30 @@ export function useAction<TArgs extends unknown[]>(action: (...args: TArgs) => P
   return { run, busy, error, clearError: () => setError('') }
 }
 
+export function useTheme() {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      return localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'
+    } catch {
+      return 'light'
+    }
+  })
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    try {
+      localStorage.setItem('theme', theme)
+    } catch {
+      // tema não persiste em modo privado
+    }
+  }, [theme])
+
+  return {
+    theme,
+    toggleTheme: () => setTheme((current) => (current === 'dark' ? 'light' : 'dark')),
+  }
+}
+
 export function useDebouncedValue<T>(value: T, delay = 500) {
   const [debounced, setDebounced] = useState(value)
   useEffect(() => {

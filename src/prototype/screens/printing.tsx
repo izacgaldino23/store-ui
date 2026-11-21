@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -9,7 +8,7 @@ import { itemsApi, printingApi } from '../api'
 import { addonPriceTypes, money } from '../constants'
 import { useAction, useApi } from '../hooks'
 import type { PrintAddon, PrintPaper } from '../types'
-import { ConfirmDialog, Field, PageHeader, Select, StatePanel } from '../ui'
+import { ConfirmDialog, Field, PageHeader, Pagination, Select, StatePanel } from '../ui'
 import { SidePanel } from '../side-panel'
 
 export function PrintingScreen() {
@@ -18,9 +17,11 @@ export function PrintingScreen() {
   const [editingPaper, setEditingPaper] = useState<PrintPaper | null>(null)
   const [editingAddon, setEditingAddon] = useState<PrintAddon | null>(null)
   const [deleting, setDeleting] = useState<{ kind: 'paper' | 'addon'; id: string } | null>(null)
+  const [paperPage, setPaperPage] = useState(1)
+  const [addonPage, setAddonPage] = useState(1)
 
-  const papers = useApi(() => printingApi.papers({ limit: 100 }), [])
-  const addons = useApi(() => printingApi.addons({ limit: 100 }), [])
+  const papers = useApi(() => printingApi.papers({ active: true, page: paperPage, limit: 20 }), [paperPage])
+  const addons = useApi(() => printingApi.addons({ active: true, page: addonPage, limit: 20 }), [addonPage])
   const insumos = useApi(() => itemsApi.list({ type: 'insumo', limit: 100 }), [])
 
   const savePaper = useAction(async (payload: Parameters<typeof printingApi.savePaper>[0]) => {
@@ -44,16 +45,9 @@ export function PrintingScreen() {
     addons.reload()
   })
 
-  const error = savePaper.error || saveAddon.error || remove.error
-
   return (
     <>
       <PageHeader title="Impressão" description="Papéis, insumos e adicionais de impressão." />
-      {error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
 
       <section className="mb-8">
         <div className="mb-3 flex items-center justify-between gap-3">
@@ -71,7 +65,7 @@ export function PrintingScreen() {
             Novo papel
           </Button>
         </div>
-        <StatePanel loading={papers.loading} error={papers.error} empty={!papers.data?.length}>
+        <StatePanel loading={papers.loading} error={papers.error} empty={!papers.data?.papers.length}>
           <div className="hidden overflow-x-auto rounded-lg border md:block">
             <Table>
               <TableHeader>
@@ -83,7 +77,7 @@ export function PrintingScreen() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {papers.data?.map((paper) => (
+                {papers.data?.papers.map((paper) => (
                   <TableRow key={paper.id}>
                     <TableCell className="font-medium">{paper.display_name}</TableCell>
                     <TableCell>{money(paper.price_per_sheet)}</TableCell>
@@ -117,7 +111,7 @@ export function PrintingScreen() {
             </Table>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 md:hidden">
-            {papers.data?.map((paper) => (
+            {papers.data?.papers.map((paper) => (
               <Card key={paper.id} size="sm">
                 <CardHeader>
                   <CardTitle className="text-base">{paper.display_name}</CardTitle>
@@ -148,6 +142,12 @@ export function PrintingScreen() {
             ))}
           </div>
         </StatePanel>
+        <Pagination
+          page={paperPage}
+          total={papers.data?.total ?? 0}
+          limit={20}
+          onPageChange={setPaperPage}
+        />
       </section>
 
       <section>
@@ -166,7 +166,7 @@ export function PrintingScreen() {
             Novo adicional
           </Button>
         </div>
-        <StatePanel loading={addons.loading} error={addons.error} empty={!addons.data?.length}>
+        <StatePanel loading={addons.loading} error={addons.error} empty={!addons.data?.addons.length}>
           <div className="hidden overflow-x-auto rounded-lg border md:block">
             <Table>
               <TableHeader>
@@ -178,7 +178,7 @@ export function PrintingScreen() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {addons.data?.map((addon) => (
+                {addons.data?.addons.map((addon) => (
                   <TableRow key={addon.id}>
                     <TableCell className="font-medium">{addon.name}</TableCell>
                     <TableCell>{addonPriceTypes.find((option) => option.value === addon.price_type)?.label}</TableCell>
@@ -214,7 +214,7 @@ export function PrintingScreen() {
             </Table>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 md:hidden">
-            {addons.data?.map((addon) => (
+            {addons.data?.addons.map((addon) => (
               <Card key={addon.id} size="sm">
                 <CardHeader>
                   <CardTitle className="text-base">{addon.name}</CardTitle>
@@ -245,6 +245,12 @@ export function PrintingScreen() {
             ))}
           </div>
         </StatePanel>
+        <Pagination
+          page={addonPage}
+          total={addons.data?.total ?? 0}
+          limit={20}
+          onPageChange={setAddonPage}
+        />
       </section>
 
       <PaperPanel
@@ -253,6 +259,7 @@ export function PrintingScreen() {
         paper={editingPaper}
         insumos={insumos.data?.items || []}
         busy={savePaper.busy}
+        error={savePaper.error}
         onSave={(payload) => void savePaper.run(payload)}
       />
       <AddonPanel
@@ -260,6 +267,7 @@ export function PrintingScreen() {
         onOpenChange={setAddonOpen}
         addon={editingAddon}
         busy={saveAddon.busy}
+        error={saveAddon.error}
         onSave={(payload) => void saveAddon.run(payload)}
       />
       <ConfirmDialog
@@ -269,6 +277,7 @@ export function PrintingScreen() {
         description="O registro será desativado."
         confirmLabel="Excluir"
         busy={remove.busy}
+        error={remove.error}
         onConfirm={() => void remove.run()}
       />
     </>
@@ -281,6 +290,7 @@ function PaperPanel({
   paper,
   insumos,
   busy,
+  error,
   onSave,
 }: {
   open: boolean
@@ -288,6 +298,7 @@ function PaperPanel({
   paper: PrintPaper | null
   insumos: { id: string; name: string }[]
   busy: boolean
+  error?: string
   onSave: (payload: Parameters<typeof printingApi.savePaper>[0]) => void
 }) {
   const [itemId, setItemId] = useState('')
@@ -307,6 +318,7 @@ function PaperPanel({
       open={open}
       onOpenChange={onOpenChange}
       title={paper ? 'Editar papel' : 'Novo papel'}
+      error={error}
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -372,12 +384,14 @@ function AddonPanel({
   onOpenChange,
   addon,
   busy,
+  error,
   onSave,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   addon: PrintAddon | null
   busy: boolean
+  error?: string
   onSave: (payload: Parameters<typeof printingApi.saveAddon>[0]) => void
 }) {
   const [name, setName] = useState('')
@@ -394,6 +408,7 @@ function AddonPanel({
       open={open}
       onOpenChange={onOpenChange}
       title={addon ? 'Editar adicional' : 'Novo adicional'}
+      error={error}
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>

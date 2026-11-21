@@ -23,13 +23,13 @@ import type {
   DiscountType,
   OrderPayload,
   PaymentMethod,
-  PrintAddon,
 } from '../types'
 import {
   ConfirmDialog,
   Field,
   LinkButton,
   PageHeader,
+  Pagination,
   PaymentDialog,
   Select,
   StatePanel,
@@ -55,15 +55,17 @@ interface PrintLine {
 export function OrdersScreen() {
   const [status, setStatus] = useState('')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
   const debouncedSearch = useDebouncedValue(search)
   const { data, loading, error, reload } = useApi(
     () =>
       ordersApi.list({
         status: status || undefined,
         client_search: debouncedSearch || undefined,
-        limit: 100,
+        page,
+        limit: 20,
       }),
-    [status, debouncedSearch],
+    [status, debouncedSearch, page],
   )
 
   return (
@@ -72,11 +74,21 @@ export function OrdersScreen() {
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <Input
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value)
+            setPage(1)
+          }}
           placeholder="Buscar por cliente"
           className="sm:max-w-xs"
         />
-        <Select value={status} onChange={(event) => setStatus(event.target.value)} className="sm:max-w-xs">
+        <Select
+          value={status}
+          onChange={(event) => {
+            setStatus(event.target.value)
+            setPage(1)
+          }}
+          className="sm:max-w-xs"
+        >
           <option value="">Todos os status</option>
           {statusOptions.map((option) => (
             <option key={option.value} value={option.value}>
@@ -84,7 +96,7 @@ export function OrdersScreen() {
             </option>
           ))}
         </Select>
-        <Button variant="outline" onClick={reload}>
+        <Button variant="outline" className="ml-auto" onClick={reload}>
           Atualizar
         </Button>
       </div>
@@ -142,6 +154,7 @@ export function OrdersScreen() {
           ))}
         </div>
       </StatePanel>
+      <Pagination page={page} total={data?.total ?? 0} limit={20} onPageChange={setPage} />
     </>
   )
 }
@@ -168,7 +181,6 @@ export function OrderDetailScreen() {
   }
 
   const editable = ['rascunho', 'pendente', 'em_producao', 'pronto'].includes(order.status)
-  const actionError = finalize.error || cancel.error
 
   return (
     <>
@@ -181,11 +193,6 @@ export function OrderDetailScreen() {
         description={`${order.client_name || 'Balcão'} · ${shortDate(order.created_at)}`}
         action={<StatusBadge status={order.status} />}
       />
-      {actionError && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{actionError}</AlertDescription>
-        </Alert>
-      )}
       {order.status === 'entregue' && (
         <Alert className="mb-4">
           <CheckCircle2 />
@@ -293,6 +300,7 @@ export function OrderDetailScreen() {
         open={paymentOpen}
         onOpenChange={setPaymentOpen}
         busy={finalize.busy}
+        error={finalize.error}
         onConfirm={async (method) => {
           if (await finalize.run(method)) {
             setPaymentOpen(false)
@@ -307,6 +315,7 @@ export function OrderDetailScreen() {
         description="O pedido será marcado como cancelado."
         confirmLabel="Cancelar pedido"
         busy={cancel.busy}
+        error={cancel.error}
         onConfirm={async () => {
           if (await cancel.run()) {
             setCancelOpen(false)
@@ -352,6 +361,8 @@ function OrderForm({ orderId }: { orderId?: string }) {
   const papers = useApi(() => printingApi.papers({ active: true, limit: 100 }), [])
   const addons = useApi(() => printingApi.addons({ active: true, limit: 100 }), [])
   const clients = useApi(() => clientsApi.list({ active: true, limit: 100 }), [])
+  const paperOptions = papers.data?.papers ?? []
+  const addonOptions = addons.data?.addons ?? []
   const existing = useApi(() => (orderId ? ordersApi.get(orderId) : Promise.resolve(null)), [orderId])
   const clientSave = useAction(async (payload: ClientPayload) => {
     const created = await clientsApi.save(payload)
@@ -388,8 +399,8 @@ function OrderForm({ orderId }: { orderId?: string }) {
 
   const productTotal = cart.reduce((sum, line) => sum + line.unit_price * line.quantity, 0)
   const printTotal = prints.reduce((sum, line) => {
-    const paper = papers.data?.find((item) => item.id === line.print_paper_id)
-    const selected = addons.data?.filter((addon) => line.addon_ids.includes(addon.id)) || []
+    const paper = paperOptions.find((item) => item.id === line.print_paper_id)
+    const selected = addonOptions.filter((addon) => line.addon_ids.includes(addon.id))
     return sum + computePrintTotal(paper, selected, line.quantity)
   }, 0)
   const subtotal = Math.round((productTotal + printTotal) * 100) / 100
@@ -459,7 +470,7 @@ function OrderForm({ orderId }: { orderId?: string }) {
   }
 
   const addPrint = () => {
-    const firstPaper = papers.data?.[0]?.id
+    const firstPaper = paperOptions[0]?.id
     if (!firstPaper) return
     setPrints((current) => [
       ...current,
@@ -473,7 +484,6 @@ function OrderForm({ orderId }: { orderId?: string }) {
     ])
   }
 
-  const actionError = save.error || finalize.error || clientSave.error
   const invalid = subtotal <= 0 || discount > subtotal
 
   return (
@@ -486,12 +496,6 @@ function OrderForm({ orderId }: { orderId?: string }) {
         title={orderId ? 'Editar pedido' : 'Novo pedido'}
         description="Monte a venda por produtos ou impressões."
       />
-      {actionError && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{actionError}</AlertDescription>
-        </Alert>
-      )}
-
       <div className="pb-40 md:pb-4">
         <div className="mb-4 flex items-center gap-3 text-sm">
           <span className={step === 'itens' ? 'font-semibold text-primary' : 'text-muted-foreground'}>
@@ -503,9 +507,13 @@ function OrderForm({ orderId }: { orderId?: string }) {
           </span>
         </div>
         {step === 'itens' && (
-          <>
-            <section className="space-y-3">
-            <Input
+          <div className="space-y-6">
+            <section className="space-y-3 rounded-lg border bg-card/40 p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Produtos</h3>
+                <span className="text-xs text-muted-foreground">{cart.length} no pedido</span>
+              </div>
+              <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Buscar item por nome ou código"
@@ -528,7 +536,9 @@ function OrderForm({ orderId }: { orderId?: string }) {
                     >
                       <span className="min-w-0">
                         <span className="block truncate font-medium">{item.name}</span>
-                        <span className="block text-xs text-muted-foreground">{item.code}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {item.bar_code || item.code}
+                        </span>
                       </span>
                       <span className="shrink-0 font-semibold">
                         {item.sale_price ? money(item.sale_price) : 'Sem preço'}
@@ -576,16 +586,20 @@ function OrderForm({ orderId }: { orderId?: string }) {
             </div>
             </section>
 
-            <section className="space-y-3">
-            <Button variant="outline" onClick={addPrint} disabled={!papers.data?.length}>
+            <section className="space-y-3 border-t pt-5">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Impressões</h3>
+                <span className="text-xs text-muted-foreground">{prints.length} adicionadas</span>
+              </div>
+              <Button variant="outline" onClick={addPrint} disabled={!paperOptions.length}>
               <Plus data-icon="inline-start" />
               Nova impressão
             </Button>
             {prints.map((line) => {
-              const paper = papers.data?.find((item) => item.id === line.print_paper_id)
+              const paper = paperOptions.find((item) => item.id === line.print_paper_id)
               const lineTotal = computePrintTotal(
                 paper,
-                addons.data?.filter((addon) => line.addon_ids.includes(addon.id)) || [],
+                addonOptions.filter((addon) => line.addon_ids.includes(addon.id)),
                 line.quantity,
               )
               return (
@@ -606,7 +620,7 @@ function OrderForm({ orderId }: { orderId?: string }) {
                           )
                         }
                       >
-                        {papers.data?.map((paperOption) => (
+                        {paperOptions.map((paperOption) => (
                           <option key={paperOption.id} value={paperOption.id}>
                             {paperOption.display_name}
                           </option>
@@ -645,7 +659,7 @@ function OrderForm({ orderId }: { orderId?: string }) {
                     <div className="flex flex-col gap-1 text-sm">
                       <span className="font-medium">Adicionais</span>
                       <div className="flex flex-wrap gap-2">
-                        {addons.data?.map((addon: PrintAddon) => (
+                        {addonOptions.map((addon) => (
                           <label key={addon.id} className="flex items-center gap-1 text-sm">
                             <input
                               type="checkbox"
@@ -687,7 +701,7 @@ function OrderForm({ orderId }: { orderId?: string }) {
               <p className="py-6 text-center text-muted-foreground">Nenhuma impressão adicionada.</p>
             )}
             </section>
-          </>
+          </div>
         )}
 
         {step === 'detalhes' && (
@@ -697,7 +711,7 @@ function OrderForm({ orderId }: { orderId?: string }) {
                 <span className="mb-1.5 block text-sm font-medium">Cliente</span>
                 <Select value={clientId} onChange={(event) => setClientId(event.target.value)}>
                   <option value="">Balcão (sem cliente)</option>
-                  {clients.data?.map((client) => (
+                  {clients.data?.clients.map((client) => (
                     <option key={client.id} value={client.id}>
                       {client.name}
                     </option>
@@ -761,6 +775,7 @@ function OrderForm({ orderId }: { orderId?: string }) {
           <div>
             <p className="text-sm text-muted-foreground">Total</p>
             <p className="text-2xl font-semibold">{money(total)}</p>
+            {save.error && <p className="text-xs text-destructive">{save.error}</p>}
           </div>
           <div className="flex gap-2">
             {step === 'detalhes' && (
@@ -814,6 +829,7 @@ function OrderForm({ orderId }: { orderId?: string }) {
         onOpenChange={setClientOpen}
         client={null}
         busy={clientSave.busy}
+        error={clientSave.error}
         onSave={(payload) => void clientSave.run(payload)}
         title="Novo cliente"
       />
@@ -822,6 +838,7 @@ function OrderForm({ orderId }: { orderId?: string }) {
         open={paymentOpen}
         onOpenChange={setPaymentOpen}
         busy={finalize.busy}
+        error={finalize.error}
         onConfirm={async (method) => {
           if (await finalize.run(method)) setPaymentOpen(false)
         }}

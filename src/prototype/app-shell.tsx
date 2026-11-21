@@ -6,15 +6,18 @@ import {
   Home,
   LayoutGrid,
   LogOut,
+  Moon,
   Package,
   Plus,
   ReceiptText,
   ShoppingCart,
+  Sun,
   Users,
 } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { authApi } from './api'
+import { useTheme } from './hooks'
 
 interface NavItem {
   to: string
@@ -81,6 +84,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
 export function AppShell() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const { theme, toggleTheme } = useTheme()
   const userEmail = (() => {
     try {
       return (JSON.parse(localStorage.getItem('user') || '{}') as { email?: string }).email || ''
@@ -120,17 +124,28 @@ export function AppShell() {
         </nav>
         <div className="mt-auto border-t pt-3">
           {userEmail && <p className="truncate px-3 pb-2 text-xs text-muted-foreground">{userEmail}</p>}
-          <button
-            type="button"
-            onClick={() => void logout()}
-            className={cn(
-              buttonVariants({ variant: 'ghost', size: 'default' }),
-              'h-11 w-full justify-start gap-3 px-3 text-base',
-            )}
-          >
-            <LogOut data-icon="inline-start" />
-            Sair
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+              title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+              className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'shrink-0')}
+            >
+              {theme === 'dark' ? <Sun /> : <Moon />}
+            </button>
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className={cn(
+                buttonVariants({ variant: 'ghost', size: 'default' }),
+                'h-11 flex-1 justify-start gap-3 px-3 text-base',
+              )}
+            >
+              <LogOut data-icon="inline-start" />
+              Sair
+            </button>
+          </div>
         </div>
       </aside>
 

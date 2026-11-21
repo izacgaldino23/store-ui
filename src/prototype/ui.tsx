@@ -1,6 +1,6 @@
 import { useState, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, ChevronDown, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -122,15 +122,15 @@ export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   )
 }
 
-export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select({ className, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <select
-      {...props}
-      className={cn(
-        'flex h-11 w-full rounded-md border border-input bg-background px-3 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
-        props.className,
-      )}
-    />
+    <div className={cn('relative', className)}>
+      <select
+        {...props}
+        className="flex h-11 w-full appearance-none rounded-md border border-input bg-background pl-3 pr-9 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      />
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+    </div>
   )
 }
 
@@ -154,16 +154,48 @@ export function MoneyCard({
   )
 }
 
+export function Pagination({
+  page,
+  total,
+  limit,
+  onPageChange,
+}: {
+  page: number
+  total: number
+  limit: number
+  onPageChange: (page: number) => void
+}) {
+  const pages = Math.max(1, Math.ceil(total / limit))
+  if (pages <= 1) return null
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+      <span className="text-muted-foreground">
+        Página {page} de {pages} · {total} registros
+      </span>
+      <div className="flex gap-2">
+        <Button variant="outline" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+          Anterior
+        </Button>
+        <Button variant="outline" disabled={page >= pages} onClick={() => onPageChange(page + 1)}>
+          Próxima
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export function PaymentDialog({
   open,
   onOpenChange,
   onConfirm,
   busy,
+  error,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onConfirm: (method: PaymentMethod) => void
   busy?: boolean
+  error?: string
 }) {
   const [method, setMethod] = useState<PaymentMethod>('pix')
   return (
@@ -194,6 +226,11 @@ export function PaymentDialog({
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
@@ -214,6 +251,7 @@ export function ConfirmDialog({
   description,
   confirmLabel = 'Excluir',
   busy,
+  error,
   onConfirm,
   children,
 }: {
@@ -223,6 +261,7 @@ export function ConfirmDialog({
   description: string
   confirmLabel?: string
   busy?: boolean
+  error?: string
   onConfirm: () => void
   children?: ReactNode
 }) {
@@ -233,6 +272,11 @@ export function ConfirmDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         {children}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

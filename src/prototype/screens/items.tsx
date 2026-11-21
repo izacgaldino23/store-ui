@@ -10,7 +10,16 @@ import { itemsApi } from '../api'
 import { itemTypes, money, shortDate } from '../constants'
 import { useAction, useApi, useDebouncedValue } from '../hooks'
 import type { CatalogItem, ItemPayload, ItemType } from '../types'
-import { Field, LinkButton, PageHeader, Select, StatePanel, Textarea, ConfirmDialog } from '../ui'
+import {
+  ConfirmDialog,
+  Field,
+  LinkButton,
+  PageHeader,
+  Pagination,
+  Select,
+  StatePanel,
+  Textarea,
+} from '../ui'
 import { SidePanel } from '../side-panel'
 
 const emptyItem: ItemPayload = {
@@ -30,6 +39,7 @@ const emptyItem: ItemPayload = {
 
 export function ItemsScreen() {
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
   const debouncedSearch = useDebouncedValue(search)
   const [type, setType] = useState('')
   const [importOpen, setImportOpen] = useState(false)
@@ -40,8 +50,14 @@ export function ItemsScreen() {
   const [panelOpen, setPanelOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const { data, loading, error, reload } = useApi(
-    () => itemsApi.list({ search: debouncedSearch || undefined, type: type || undefined, limit: 100 }),
-    [debouncedSearch, type],
+    () =>
+      itemsApi.list({
+        search: debouncedSearch || undefined,
+        type: type || undefined,
+        page,
+        limit: 20,
+      }),
+    [debouncedSearch, type, page],
   )
   const remove = useAction(async () => {
     if (selected.length === 1) await itemsApi.remove(selected[0])
@@ -85,18 +101,28 @@ export function ItemsScreen() {
           </div>
         }
       />
-      {(summary || importCsv.error || remove.error) && (
-        <Alert className="mb-4" variant={importCsv.error || remove.error ? 'destructive' : 'default'}>
-          <AlertDescription>{importCsv.error || remove.error || summary}</AlertDescription>
+      {summary && (
+        <Alert className="mb-4">
+          <AlertDescription>{summary}</AlertDescription>
         </Alert>
       )}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <Input
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value)
+            setPage(1)
+          }}
           placeholder="Buscar por nome, código ou palavra-chave"
         />
-        <Select value={type} onChange={(event) => setType(event.target.value)} className="sm:max-w-xs">
+        <Select
+          value={type}
+          onChange={(event) => {
+            setType(event.target.value)
+            setPage(1)
+          }}
+          className="sm:max-w-xs"
+        >
           <option value="">Todos os tipos</option>
           {itemTypes.map((option) => (
             <option key={option.value} value={option.value}>
@@ -202,6 +228,7 @@ export function ItemsScreen() {
           ))}
         </div>
       </StatePanel>
+      <Pagination page={page} total={data?.total ?? 0} limit={20} onPageChange={setPage} />
 
       <ItemPanel
         open={panelOpen}
@@ -218,6 +245,7 @@ export function ItemsScreen() {
         title="Excluir itens?"
         description="Os itens serão desativados e não aparecerão mais no catálogo."
         busy={remove.busy}
+        error={remove.error}
         onConfirm={() => void remove.run()}
       />
       <ConfirmDialog
@@ -227,6 +255,7 @@ export function ItemsScreen() {
         description="Selecione um arquivo CSV de itens. Nada é excluído."
         confirmLabel="Selecionar arquivo"
         busy={importCsv.busy}
+        error={importCsv.error}
         onConfirm={() => fileRef.current?.click()}
       />
       <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onFile} />
@@ -450,54 +479,68 @@ export function ItemDetailScreen() {
           </div>
         }
       />
-      {adjust.error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{adjust.error}</AlertDescription>
-        </Alert>
-      )}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Valores</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Custo</span>
-              <span>{money(item.cost_price)}</span>
+      <Card>
+        <CardHeader>
+          <CardTitle>Detalhes do item</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-6 md:grid-cols-2">
+          <dl className="space-y-2 text-sm">
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Custo</dt>
+              <dd className="font-medium">{money(item.cost_price)}</dd>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Venda</span>
-              <span>{item.sale_price ? money(item.sale_price) : '-'}</span>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Venda</dt>
+              <dd className="font-medium">{item.sale_price ? money(item.sale_price) : '-'}</dd>
             </div>
             {item.item_type === 'revenda' && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Estoque</span>
-                <span>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Estoque</dt>
+                <dd className="font-medium">
                   {item.current_stock ?? 0} {item.unit} (mín. {item.min_stock})
-                </span>
+                </dd>
               </div>
             )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Informações</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2 text-sm">
-            {item.display_name && <p>{item.display_name}</p>}
-            {item.description && <p>{item.description}</p>}
-            {item.supplier && <p>Fornecedor: {item.supplier}</p>}
-            {item.bar_code && <p>Código de barras: {item.bar_code}</p>}
-            <p className="text-muted-foreground">Atualizado em {shortDate(item.updated_at)}</p>
-          </CardContent>
-        </Card>
-      </div>
+          </dl>
+          <dl className="space-y-2 text-sm">
+            {item.display_name && (
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Exibição</dt>
+                <dd className="text-right font-medium">{item.display_name}</dd>
+              </div>
+            )}
+            {item.description && (
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Descrição</dt>
+                <dd className="max-w-[70%] text-right font-medium">{item.description}</dd>
+              </div>
+            )}
+            {item.supplier && (
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Fornecedor</dt>
+                <dd className="text-right font-medium">{item.supplier}</dd>
+              </div>
+            )}
+            {item.bar_code && (
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Código de barras</dt>
+                <dd className="font-mono font-medium">{item.bar_code}</dd>
+              </div>
+            )}
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Atualizado em</dt>
+              <dd className="font-medium">{shortDate(item.updated_at)}</dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
       <AdjustDialog
         open={adjustOpen}
         onOpenChange={setAdjustOpen}
         quantity={quantity}
         reason={reason}
         busy={adjust.busy}
+        error={adjust.error}
         onQuantity={setQuantity}
         onReason={setReason}
         onConfirm={() => void adjust.run()}
@@ -521,11 +564,6 @@ export function LowStockScreen() {
   return (
     <>
       <PageHeader title="Estoque baixo" description="Itens de revenda abaixo do mínimo." />
-      {adjust.error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{adjust.error}</AlertDescription>
-        </Alert>
-      )}
       <StatePanel loading={loading} error={error} empty={!data?.length}>
         <div className="hidden overflow-x-auto rounded-lg border md:block">
           <Table>
@@ -590,6 +628,7 @@ export function LowStockScreen() {
         quantity={quantity}
         reason={reason}
         busy={adjust.busy}
+        error={adjust.error}
         onQuantity={setQuantity}
         onReason={setReason}
         onConfirm={() => void adjust.run()}
@@ -604,6 +643,7 @@ function AdjustDialog({
   quantity,
   reason,
   busy,
+  error,
   onQuantity,
   onReason,
   onConfirm,
@@ -613,6 +653,7 @@ function AdjustDialog({
   quantity: number
   reason: string
   busy: boolean
+  error?: string
   onQuantity: (value: number) => void
   onReason: (value: string) => void
   onConfirm: () => void
@@ -625,6 +666,7 @@ function AdjustDialog({
       description="Use um número negativo para baixar a quantidade."
       confirmLabel="Aplicar"
       busy={busy}
+      error={error}
       onConfirm={onConfirm}
     >
       <div className="grid gap-3">

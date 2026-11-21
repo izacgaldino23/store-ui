@@ -127,7 +127,7 @@ export const printingApi = {
       '/printing/papers',
       { params },
     )
-    return unwrap(data?.papers, [])
+    return { papers: unwrap(data?.papers, []), total: data?.total ?? 0 }
   },
   savePaper: async (
     payload: {
@@ -149,7 +149,7 @@ export const printingApi = {
       '/printing/addons',
       { params },
     )
-    return unwrap(data?.addons, [])
+    return { addons: unwrap(data?.addons, []), total: data?.total ?? 0 }
   },
   saveAddon: async (
     payload: { name: string; price_type: string; price_value: number; active?: boolean },
@@ -168,7 +168,7 @@ export const clientsApi = {
     const { data } = await apiClient.get<{ clients: Client[]; total: number }>('/clients', {
       params,
     })
-    return unwrap(data?.clients, [])
+    return { clients: unwrap(data?.clients, []), total: data?.total ?? 0 }
   },
   get: async (id: string) => {
     const { data } = await apiClient.get<Client>(`/clients/${id}`)

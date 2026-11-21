@@ -13,6 +13,7 @@ export function ClientDialog({
   onOpenChange,
   client,
   busy,
+  error,
   onSave,
   title,
 }: {
@@ -20,6 +21,7 @@ export function ClientDialog({
   onOpenChange: (open: boolean) => void
   client: Client | null
   busy: boolean
+  error?: string
   onSave: (payload: ClientPayload) => void
   title?: string
 }) {
@@ -51,6 +53,7 @@ export function ClientDialog({
       onOpenChange={onOpenChange}
       title={title ?? (client ? 'Editar cliente' : 'Novo cliente')}
       description="Os campos com * são obrigatórios."
+      error={error}
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>

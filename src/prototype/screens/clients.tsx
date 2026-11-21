@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -9,17 +8,24 @@ import { clientsApi } from '../api'
 import { ClientDialog, type ClientPayload } from '../client-dialog'
 import { useAction, useApi, useDebouncedValue } from '../hooks'
 import type { Client } from '../types'
-import { ConfirmDialog, PageHeader, StatePanel } from '../ui'
+import { ConfirmDialog, PageHeader, Pagination, StatePanel } from '../ui'
 
 export function ClientsScreen() {
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
   const debouncedSearch = useDebouncedValue(search)
   const [editing, setEditing] = useState<Client | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [deleting, setDeleting] = useState<Client | null>(null)
   const { data, loading, error, reload } = useApi(
-    () => clientsApi.list({ search: debouncedSearch || undefined, active: true, limit: 100 }),
-    [debouncedSearch],
+    () =>
+      clientsApi.list({
+        search: debouncedSearch || undefined,
+        active: true,
+        page,
+        limit: 20,
+      }),
+    [debouncedSearch, page],
   )
   const save = useAction(async (payload: ClientPayload) => {
     await clientsApi.save(payload, editing?.id)
@@ -33,8 +39,6 @@ export function ClientsScreen() {
     setDeleting(null)
     reload()
   })
-  const actionError = save.error || remove.error
-
   return (
     <>
       <PageHeader
@@ -52,18 +56,16 @@ export function ClientsScreen() {
           </Button>
         }
       />
-      {actionError && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{actionError}</AlertDescription>
-        </Alert>
-      )}
       <Input
         value={search}
-        onChange={(event) => setSearch(event.target.value)}
+        onChange={(event) => {
+          setSearch(event.target.value)
+          setPage(1)
+        }}
         placeholder="Buscar por nome ou telefone"
         className="mb-4 sm:max-w-sm"
       />
-      <StatePanel loading={loading} error={error} empty={!data?.length}>
+      <StatePanel loading={loading} error={error} empty={!data?.clients.length}>
         <div className="hidden overflow-x-auto rounded-lg border md:block">
           <Table>
             <TableHeader>
@@ -75,7 +77,7 @@ export function ClientsScreen() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data?.map((client) => (
+              {data?.clients.map((client) => (
                 <TableRow key={client.id}>
                   <TableCell className="font-medium">{client.name}</TableCell>
                   <TableCell>{client.phone || '-'}</TableCell>
@@ -109,7 +111,7 @@ export function ClientsScreen() {
           </Table>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 md:hidden">
-          {data?.map((client) => (
+          {data?.clients.map((client) => (
             <Card key={client.id} size="sm">
               <CardHeader>
                 <CardTitle className="text-base">{client.name}</CardTitle>
@@ -139,12 +141,14 @@ export function ClientsScreen() {
           ))}
         </div>
       </StatePanel>
+      <Pagination page={page} total={data?.total ?? 0} limit={20} onPageChange={setPage} />
 
       <ClientDialog
         open={formOpen}
         onOpenChange={setFormOpen}
         client={editing}
         busy={save.busy}
+        error={save.error}
         onSave={(payload) => void save.run(payload)}
       />
       <ConfirmDialog
@@ -153,6 +157,7 @@ export function ClientsScreen() {
         title="Excluir cliente?"
         description="O cliente será desativado. Pedidos anteriores mantêm o nome."
         busy={remove.busy}
+        error={remove.error}
         onConfirm={() => void remove.run()}
       />
     </>
