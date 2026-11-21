@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Download, Pencil, Plus } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -462,82 +463,83 @@ export function ItemDetailScreen() {
     return <StatePanel loading={loading} error={error} empty={!item} />
   }
 
+  const typeLabel = itemTypes.find((option) => option.value === item.item_type)?.label
+  const isResale = item.item_type === 'revenda'
+  const lowStock = isResale && (item.current_stock ?? 0) <= item.min_stock
+
   return (
     <>
       <Button variant="ghost" onClick={() => navigate('/items')} className="mb-3">
         <ArrowLeft data-icon="inline-start" />
         Itens
       </Button>
-      <PageHeader
-        title={item.name}
-        description={`${item.code} · ${itemTypes.find((option) => option.value === item.item_type)?.label}`}
-        action={
-          <div className="flex gap-2">
-            <LinkButton to={`/items/${item.id}/edit`} variant="outline">
-              <Pencil data-icon="inline-start" />
-              Editar
-            </LinkButton>
-            {item.item_type === 'revenda' && (
-              <Button onClick={() => setAdjustOpen(true)}>Ajustar estoque</Button>
-            )}
+
+      <div className="mx-auto max-w-4xl space-y-4">
+        <section className="rounded-lg border bg-card p-5 text-card-foreground shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                  {typeLabel}
+                </span>
+                <span className="font-mono text-xs text-muted-foreground">{item.code}</span>
+              </div>
+              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{item.name}</h1>
+              {item.bar_code && (
+                <p className="text-sm text-muted-foreground">
+                  Código de barras{' '}
+                  <span className="font-mono font-medium text-foreground">{item.bar_code}</span>
+                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <LinkButton to={`/items/${item.id}/edit`} variant="outline">
+                <Pencil data-icon="inline-start" />
+                Editar
+              </LinkButton>
+              {isResale && <Button onClick={() => setAdjustOpen(true)}>Ajustar estoque</Button>}
+            </div>
           </div>
-        }
-      />
-      <Card>
-        <CardHeader>
-          <CardTitle>Detalhes do item</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-6 md:grid-cols-2">
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">Custo</dt>
-              <dd className="font-medium">{money(item.cost_price)}</dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">Venda</dt>
-              <dd className="font-medium">{item.sale_price ? money(item.sale_price) : '-'}</dd>
-            </div>
-            {item.item_type === 'revenda' && (
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted-foreground">Estoque</dt>
-                <dd className="font-medium">
-                  {item.current_stock ?? 0} {item.unit} (mín. {item.min_stock})
-                </dd>
-              </div>
-            )}
-          </dl>
-          <dl className="space-y-2 text-sm">
-            {item.display_name && (
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted-foreground">Exibição</dt>
-                <dd className="text-right font-medium">{item.display_name}</dd>
-              </div>
-            )}
-            {item.description && (
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted-foreground">Descrição</dt>
-                <dd className="max-w-[70%] text-right font-medium">{item.description}</dd>
-              </div>
-            )}
-            {item.supplier && (
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted-foreground">Fornecedor</dt>
-                <dd className="text-right font-medium">{item.supplier}</dd>
-              </div>
-            )}
-            {item.bar_code && (
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted-foreground">Código de barras</dt>
-                <dd className="font-mono font-medium">{item.bar_code}</dd>
-              </div>
-            )}
-            <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">Atualizado em</dt>
-              <dd className="font-medium">{shortDate(item.updated_at)}</dd>
-            </div>
-          </dl>
-        </CardContent>
-      </Card>
+        </section>
+
+        <section className="grid gap-3 sm:grid-cols-3" aria-label="Indicadores do item">
+          <Metric
+            label="Preço de venda"
+            value={item.sale_price ? money(item.sale_price) : '-'}
+            hint={item.sale_price ? undefined : 'Sem preço definido'}
+            highlight
+          />
+          <Metric label="Custo" value={money(item.cost_price)} />
+          {isResale ? (
+            <Metric
+              label="Estoque"
+              value={`${item.current_stock ?? 0} ${item.unit}`}
+              hint={`Mínimo ${item.min_stock}`}
+              warning={lowStock}
+            />
+          ) : (
+            <Metric label="Unidade" value={item.unit} />
+          )}
+        </section>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Informações do item</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="divide-y">
+              <InfoRow label="Nome de exibição" value={item.display_name} />
+              <InfoRow label="Descrição" value={item.description} />
+              <InfoRow label="Fornecedor" value={item.supplier} />
+              <InfoRow label="Unidade" value={item.unit} />
+              <InfoRow label="Unidades por pacote" value={item.units_per_pack} />
+              <InfoRow label="Palavras-chave" value={item.keywords} />
+              <InfoRow label="Atualizado em" value={shortDate(item.updated_at)} />
+            </dl>
+          </CardContent>
+        </Card>
+      </div>
+
       <AdjustDialog
         open={adjustOpen}
         onOpenChange={setAdjustOpen}
@@ -550,6 +552,46 @@ export function ItemDetailScreen() {
         onConfirm={() => void adjust.run()}
       />
     </>
+  )
+}
+
+function Metric({
+  label,
+  value,
+  hint,
+  highlight = false,
+  warning = false,
+}: {
+  label: string
+  value: string
+  hint?: string
+  highlight?: boolean
+  warning?: boolean
+}) {
+  return (
+    <div
+      className={cn(
+        'rounded-lg border bg-card p-4 text-card-foreground shadow-sm',
+        highlight && 'border-primary/40 bg-primary/5',
+        warning && 'border-destructive/40 bg-destructive/5',
+      )}
+    >
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={cn('mt-1 text-xl font-semibold', highlight && 'text-primary', warning && 'text-destructive')}>
+        {value}
+      </p>
+      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  )
+}
+
+function InfoRow({ label, value }: { label: string; value?: ReactNode }) {
+  if (!value) return null
+  return (
+    <div className="grid gap-1 py-3 sm:grid-cols-[180px_1fr] sm:gap-4">
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className="break-words text-sm font-medium">{value}</dd>
+    </div>
   )
 }
 
