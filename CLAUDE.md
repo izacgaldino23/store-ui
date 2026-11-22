@@ -1,115 +1,83 @@
 # Miau Store UI — Project Context
 
-## Stack
-- **Bundler:** Vite
-- **UI Library:** Ant Design (`@refinedev/antd`)
-- **Framework:** Refine v5 (`@refinedev/core`)
-- **Router:** React Router v6 (`@refinedev/react-router`)
-- **Data Provider:** `@refinedev/simple-rest` (customizado)
-- **Auth:** Custom Auth Provider (JWT + refresh token via cookie)
-- **HTTP Client:** Axios com interceptors
-- **Language:** TypeScript
-- **Package Manager:** bun
+## Branch state
 
-⚠️ **React 19 + antd v5:** antd v5 supports React 16–18. React 19 requires the compat patch — `@ant-design/v5-patch-for-react-19` MUST stay as the first import in `src/index.tsx`. Without it, static antd methods (`Modal.confirm`, `message.*`, `notification.*`) silently fail to render (no modal/toast, no error), while JSX components keep working. Never remove that import.
+- `main`: legacy UI (Refine v4 + Ant Design v5). See git history for that stack.
+- `develop` (current): M-003 touch-first UI. All routed screens are migrated and call the Go API directly — no mocks, no Refine, no Ant Design.
+- Round A ported the remaining legacy gaps (dashboard counters, order filters/details/cancel reason/dirty guard, item stock/CSV filters, client phone/status, cash-flow filters, report presets/tables, print status) into `develop`.
+- Production promotion (`develop` → `main`) is **out of scope** for M-003 until Round A is validated in the preview.
+
+## Stack
+
+- **Bundler:** Vite 6
+- **UI:** React 19 + Tailwind CSS 4 + shadcn/base-ui primitives (`src/components/ui/`)
+- **Router:** React Router v6 (`BrowserRouter` in `App.tsx`)
+- **HTTP:** Axios instance in `src/providers/rest-client.ts` (Bearer token, refresh-on-401 with one retry, `X-Timezone`, PT-BR error translation)
+- **Language:** TypeScript
+- **Package manager:** bun
+- **Deploy/preview:** Cloudflare Workers Previews via `npx wrangler preview`; `wrangler.json` has `previews: {}` and SPA fallback to `dist`. Branch `develop` preview: `https://develop-store-ui.izacgaldino.workers.dev`.
 
 ## Architecture
 
 ```
 store-ui/
 ├── src/
+│   ├── App.tsx                     # all routes + RequireAuth
+│   ├── index.tsx                   # entry (Geist font + index.css)
+│   ├── index.css                   # Tailwind theme
+│   ├── config.ts                   # API_URL (VITE_API_URL, default localhost:8080)
 │   ├── providers/
-│   │   ├── auth-provider.ts     # login/logout/check/getIdentity/onError
-│   │   ├── data-provider.ts     # adapta API REST → formato Refine
-│   │   ├── rest-client.ts       # axios instance + interceptors JWT
-│   │   └── error-mapping.ts     # códigos de erro → português
-│   ├── pages/
-│   │   ├── dashboard/
-│   │   ├── catalog/             # items (list, create, edit, show)
-│   │   ├── orders/              # orders (list, create, show)
-│   │   ├── pricing/             # price-table (list, create, edit) + calculadora
-│   │   └── cash-flow/           # caixa atual, relatório, histórico, despesas
-│   ├── components/
-│   │   ├── logo.tsx
-│   │   └── sider.tsx             # custom AppSider: replaces ThemedSiderV2; groups always open (controlled openKeys, ME-002); sections (Geral/Vendas/Cadastros/Mais — Caixa e Relatórios em Mais) via resources meta.section + MENU_SECTIONS in sider.tsx; CONTA+Logout isolated in fixed footer; subitems with bullet + connector line + pink left border (NF-006, sider.css); easy revert = use ThemedSiderV2 in App.tsx again
-│   ├── config.ts
-│   ├── App.tsx
-│   └── index.tsx
-├── public/
-│   └── logo.svg
+│   │   ├── rest-client.ts          # axios + interceptors
+│   │   └── error-mapping.ts        # API error code → PT-BR
+│   ├── components/ui/              # button, card, tabs, dialog, etc.
+│   └── prototype/
+│       ├── app-shell.tsx           # touch nav (sidebar on desktop, bottom bar on mobile)
+│       ├── api.ts                  # every API call, grouped by domain
+│       ├── types.ts                # API payload/response types
+│       ├── constants.ts            # labels + money/print/discount helpers
+│       ├── hooks.ts                # useApi/useAction/useDebouncedValue
+│       ├── ui.tsx                  # PageHeader, Field, StatePanel, dialogs
+│       ├── side-panel.tsx          # right-side edit panel
+│       ├── client-dialog.tsx       # shared client form
+│       ├── receipt.tsx             # 80 mm receipt dialog: print + PNG download
+│       └── screens/                # auth, dashboard, orders, items, printing,
+│                                   # clients, cashflow, reports
+├── wrangler.json
 └── package.json
 ```
 
 ## API
 
-Backend Go Fiber em `http://localhost:8080`. Todos os endpoints (exceto auth) são JWT-protected.
+Backend Go Fiber at `http://localhost:8080`. All endpoints except `/auth/*` are JWT-protected.
 
-## Auth Flow
+List responses are unwrapped in `prototype/api.ts` (`items`, `orders`, `papers`, `addons`, `clients`, `registers`, `expenses`).
 
-1. **Login:** POST `/api/auth/login` → `{ access_token, email, username }`. Salva token no localStorage.
-2. **Refresh:** POST `/api/auth/refresh` → cookie automático. Interceptor tenta refresh ao receber 401.
-3. **Logout:** POST `/api/auth/logout` + limpa localStorage.
-4. **Register:** POST `/api/auth/register` (opcional no frontend).
+## Auth flow
 
-## Data Provider
+1. `POST /api/auth/login` → `{ access_token, email, username }` saved in localStorage.
+2. Every request carries `Authorization: Bearer <token>`.
+3. On 401, interceptor calls `POST /api/auth/refresh` (httpOnly cookie) once and retries.
+4. Refresh failure clears localStorage and redirects to `/login`.
+5. `POST /api/auth/register` for new users.
 
-A API REST não segue o formato padrão do `@refinedev/simple-rest`:
-- List: retorna `{ items: [], total, page, limit }` → adaptar para `{ data: [], total }`
-- Orders: retorna `{ orders: [], total }`
-- Cash registers: retorna `{ registers: [], total }`
+## Orders (PDV)
 
-## Resources
-
-| Resource | Endpoint | Métodos |
-|----------|----------|---------|
-| `items` | `/api/catalog/items` | list, create, edit, show, delete |
-| `items/low-stock` | `/api/catalog/items/low-stock` | list |
-| `printing/papers` | `/api/printing/papers` | list, create, edit, delete (via página Catálogo → Impressão) |
-| `printing/addons` | `/api/printing/addons` | list, create, edit, delete (via página Catálogo → Impressão) |
-| `clients` | `/api/clients` | list, create, edit, delete (menu de topo "Clientes"; NF-004) |
-| `orders` | `/api/orders` | list, create, show |
-| `price-table` | `/api/pricing/table` | list, create, edit, delete (hidden from sider via `meta.hide`, ME-001; pages kept at `/pricing/*`) |
-| `cash-register` | `/api/cash-register` | open, close, current, daily-report |
-| `expenses` | `/api/expenses` | list, create |
-
-Listas de papers/addons retornam `{ papers: [] }` / `{ addons: [] }` — já tratado no data-provider e nas páginas.
-
-## Idiomas
-
-- 100% do texto da UI em português
-- Erros da API mapeados via `error-mapping.ts` para mensagens amigáveis em português
-
-## Orders (create/edit)
-
-- `create.tsx` and `edit.tsx` are ~90% duplicated and do **not** use antd `Form`/Refine `useCreate` — 100% `useState` + `apiClient`. Any change must be made in **both** files.
-- Discount (NF-005): `discountType` (`valor`|`percentual`) + `discountValue` state; `computeDiscountAmount(subtotal, type, value)` in `constants.ts`; `remaining` is computed against `totalAfterDiscount` (subtotal − discount). Payloads include `discount_type`/`discount_value`. Client-side guard: warn if `discountAmount > grandTotal`.
-- Unsaved-order guard (NF-005): `useUnsavedOrderGuard(isDirty)` in `src/components/use-unsaved-order-guard.ts` registers a native `beforeunload` (reload/close/external nav) and exposes `confirmLeave()` used by the "Voltar" buttons (Modal.confirm). `create.tsx` computes `isDirty` from "any content"; `edit.tsx` computes a diff against the loaded order. App uses classic `<BrowserRouter>` (no data router), so SPA navigation is guarded only via the intercepted Voltar clicks — not the side menu.
-- Print pricing (ME-003): print unit price MUST be computed via `computePrintUnitPrice` (`print-catalog.ts`) — percentage addons apply ONLY over the paper base price (never over base+fixed), matching the backend `ComputeUnitPrice`. Print line total MUST use `computePrintTotal` (`print-catalog.ts`): `unit × qty + Σ per_print`, matching backend `ComputePrintTotal` — `per_print` addons are charged once per print line, independent of sheets. `create.tsx`/`edit.tsx`/`prints-card.tsx` use it for totals; `prints-card.tsx` shows a "Valor Unit." column per print line. `order-receipt.tsx`/`show.tsx` display the flat fee from the snapshot addons so total ≠ qty × unit is not confusing.
-- Print description (ME-004): each print has an optional `description` field (max 255 chars) — `IPrintLine.description` in the form, `IOrderPrint.description` from the API. Rendered in `prints-card.tsx` as an Input column, in `show.tsx` prints table, and in `order-receipt.tsx` (fontSize: 11).
+- New order is a 2-step wizard: **Produtos e impressões** → **Detalhes**, with a sticky footer carrying total, `Salvar rascunho` and `Continuar`/`Finalizar`. Product search waits 500 ms after typing ends and needs at least 2 characters.
+- Discount uses `discount_type` (`valor`|`percentual`) + `discount_value`; total = subtotal − discount.
+- Print pricing: `computePrintTotal` uses paper base + addons and charges `per_print` once per print line, independent of sheets.
+- Save draft sends `status: 'rascunho'`.
+- Finalize sends `POST /api/orders/:id/finalize` with one payment method (`pix|dinheiro|credito|debito`); API replaces payments, sets status `entregue` and deducts resale stock atomically.
+- Only drafts can be finalized (`pendente → entregue` is not a valid transition).
+- Delivered orders are read-only.
+- `Recibo` on the order detail opens an 80 mm receipt with print and PNG download; discount breakdown appears only when a discount exists.
 
 ## Conventions
 
-- Nomes de arquivos: kebab-case (ex: `auth-provider.ts`)
-- Componentes React: PascalCase
-- Funções utilitárias: camelCase
-- Tipos/Interfaces: PascalCase com prefixo I (ex: `IItemResponse`)
-- Mensagens de erro/notificação sempre em português
-- Variáveis de ambiente: `VITE_API_URL` (prefixo VITE para expor ao Vite)
-
-## Phases (see docs/)
-
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 01 | Setup + Auth + Layout | Pending |
-| 02 | Catalog (items CRUD, CSV import, low stock) | Pending |
-| 03 | Orders (PDV, multi-payment, status) | Pending |
-| 04 | Pricing (price table, margin calculator) | Pending |
-| 05 | Cash Flow (open/close register, expenses, report) | Pending |
-| 06 | Dashboard + refinements | Pending |
-
-## Error codes
-
-All API error codes mapped in `src/providers/error-mapping.ts`. See full list in `docs/error-mapping.md`.
+- Files: kebab-case; components: PascalCase; helpers: camelCase.
+- Types are plain TS types (no `I` prefix requirement in the new UI).
+- All UI text and errors in Portuguese.
+- Error mapping prefers the known `code` translation, falling back to the API message.
+- Env var: `VITE_API_URL` — origin only, no `/api` and no trailing slash (`https://store-api-c8m8.onrender.com`); the client appends `/api`.
 
 ## Pre-commit validation
 
@@ -124,7 +92,7 @@ Fix all lint errors and ensure build succeeds before committing.
 
 ## Commit rules
 
-- Ask user before staging or committing
-- Prepend `store-ui:` or `docs:` or `chore:` as scope prefix
-- Keep commits small and focused per task
-- Never push without explicit user approval
+- Ask user before staging or committing.
+- Prefix store-ui commits with `store-ui:`.
+- Keep commits small and focused.
+- Never push without explicit user approval.

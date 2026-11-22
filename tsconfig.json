@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "composite": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "files": [],
   "references": [
