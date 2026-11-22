@@ -630,7 +630,7 @@ function OrderForm({ orderId }: { orderId?: string }) {
         title={orderId ? 'Editar pedido' : 'Novo pedido'}
         description="Monte a venda por produtos ou impressões."
       />
-      <div className="pb-40 md:pb-4">
+      <div className="pb-40 md:pb-24">
         <div className="mb-4 flex items-center gap-3 text-sm">
           <span className={step === 'itens' ? 'font-semibold text-primary' : 'text-muted-foreground'}>
             1. Produtos e impressões
