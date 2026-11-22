@@ -180,6 +180,8 @@ export interface DailyReport {
   closing_balance?: number
   total_sales: number
   total_expenses: number
+  cash_sales: number
+  cash_expenses: number
   expected_balance: number
   discrepancy?: number
   status: string

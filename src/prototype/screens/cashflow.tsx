@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,7 +16,7 @@ import {
 } from '../constants'
 import { useAction, useApi } from '../hooks'
 import type { ExpenseCategory, PaymentMethod } from '../types'
-import { Field, MoneyCard, PageHeader, Pagination, Select, StatePanel, Textarea } from '../ui'
+import { ConfirmDialog, Field, MoneyCard, PageHeader, Pagination, Select, StatePanel, Textarea } from '../ui'
 
 const noRegister = (error: string) => /caixa|register|404|não.*aberto|nao.*aberto/i.test(error)
 
@@ -24,16 +24,30 @@ export function CurrentCashScreen() {
   const [starting, setStarting] = useState(0)
   const [notes, setNotes] = useState('')
   const [closing, setClosing] = useState(0)
+  const [closingEdited, setClosingEdited] = useState(false)
   const [closeNotes, setCloseNotes] = useState('')
+  const [confirmClose, setConfirmClose] = useState(false)
   const current = useApi(() => cashApi.current(), [])
   const open = useAction(async () => {
     await cashApi.open(starting, notes)
     current.reload()
   })
-  const close = useAction(async () => {
-    await cashApi.close(closing, closeNotes)
+  const close = useAction(async (amount: number) => {
+    await cashApi.close(amount, closeNotes)
     current.reload()
   })
+
+  const expectedClosing = current.data
+    ? (current.data.current_balance ?? current.data.starting_balance)
+    : 0
+  useEffect(() => {
+    if (current.data && !closingEdited) setClosing(expectedClosing)
+  }, [current.data, closingEdited, expectedClosing])
+
+  const requestClose = () => {
+    if (closing === expectedClosing) void close.run(closing)
+    else setConfirmClose(true)
+  }
 
   const actionError = open.error || close.error
   const closed = current.error && noRegister(current.error)
@@ -76,17 +90,7 @@ export function CurrentCashScreen() {
             <>
               <div className="grid gap-4 sm:grid-cols-3">
                 <MoneyCard label="Saldo inicial" value={money(current.data.starting_balance)} />
-                <MoneyCard
-                  label="Saldo atual"
-                  value={money(current.data.current_balance ?? current.data.starting_balance)}
-                />
-                <MoneyCard
-                  label="Diferença"
-                  value={money(current.data.discrepancy ?? 0)}
-                  description={
-                    current.data.discrepancy == null ? 'Ainda sem fechamento' : 'Conferido no fechamento'
-                  }
-                />
+                <MoneyCard label="Saldo em dinheiro" value={money(expectedClosing)} />
               </div>
               <p className="mt-3 text-sm text-muted-foreground">
                 Aberto em {shortDate(current.data.opened_at)}
@@ -100,22 +104,47 @@ export function CurrentCashScreen() {
                 <CardContent className="grid gap-3">
                   <Field
                     label="Saldo final (R$)"
-                    hint={`Diferença prevista: ${money(closing - (current.data.current_balance ?? current.data.starting_balance))}`}
+                    hint={`Valor esperado: ${money(expectedClosing)}`}
                   >
                     <Input
                       type="number"
                       min={0}
                       step="0.01"
                       value={closing}
-                      onChange={(event) => setClosing(Number(event.target.value))}
+                      onChange={(event) => {
+                        setClosing(Number(event.target.value))
+                        setClosingEdited(true)
+                      }}
                     />
                   </Field>
                   <Field label="Observações">
                     <Textarea value={closeNotes} onChange={(event) => setCloseNotes(event.target.value)} />
                   </Field>
-                  <Button variant="destructive" disabled={close.busy} onClick={() => void close.run()}>
-                    Fechar caixa
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="secondary"
+                      disabled={close.busy}
+                      onClick={() => void close.run(expectedClosing)}
+                    >
+                      Fechar com valor esperado
+                    </Button>
+                    <Button variant="destructive" disabled={close.busy} onClick={requestClose}>
+                      Fechar caixa
+                    </Button>
+                  </div>
+                  <ConfirmDialog
+                    open={confirmClose}
+                    onOpenChange={setConfirmClose}
+                    title="Confirmar fechamento com diferença"
+                    description={`Esperado: ${money(expectedClosing)} · Contado: ${money(closing)} · Diferença: ${money(closing - expectedClosing)}`}
+                    confirmLabel="Confirmar fechamento"
+                    busy={close.busy}
+                    error={close.error}
+                    onConfirm={() => {
+                      setConfirmClose(false)
+                      void close.run(closing)
+                    }}
+                  />
                 </CardContent>
               </Card>
             </>
@@ -147,10 +176,16 @@ export function DailyReportScreen() {
                 {data.closed_at ? ` · Fechado em ${shortDate(data.closed_at)}` : ''}
               </p>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                <MoneyCard label="Vendas" value={money(data.total_sales)} />
-                <MoneyCard label="Despesas" value={money(data.total_expenses)} />
+                <MoneyCard label="Vendas (todas as formas)" value={money(data.total_sales)} />
+                <MoneyCard label="Despesas (todas as formas)" value={money(data.total_expenses)} />
+                <MoneyCard label="Vendas em dinheiro" value={money(data.cash_sales)} />
+                <MoneyCard label="Despesas em dinheiro" value={money(data.cash_expenses)} />
                 <MoneyCard label="Saldo inicial" value={money(data.starting_balance)} />
-                <MoneyCard label="Saldo esperado" value={money(data.expected_balance)} />
+                <MoneyCard
+                  label="Saldo esperado"
+                  value={money(data.expected_balance)}
+                  description="Dinheiro entregue menos despesas em dinheiro"
+                />
                 <MoneyCard label="Saldo final" value={money(data.closing_balance)} />
                 <MoneyCard
                   label="Diferença"
