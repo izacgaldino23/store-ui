@@ -1,21 +1,29 @@
 import { Link } from 'react-router-dom'
-import { ClipboardList, Package, ShoppingCart, Wallet } from 'lucide-react'
+import { ClipboardList, Package, Plus, ShoppingCart, Wallet } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { itemsApi, ordersApi, reportsApi } from '../api'
+import { itemsApi, reportsApi } from '../api'
 import { money } from '../constants'
 import { useApi } from '../hooks'
 import { MoneyCard, PageHeader, StatePanel } from '../ui'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
+const statusLabels: Record<string, string> = {
+  rascunho: 'Rascunhos',
+  pendente: 'Pendentes',
+  em_producao: 'Em produção',
+  pronto: 'Prontos',
+  entregue: 'Entregues',
+  cancelado: 'Cancelados',
+}
+
+const todayKey = () => new Date().toLocaleDateString('sv-SE')
+
 export function DashboardScreen() {
   const { data, loading, error, reload } = useApi(async () => {
-    const [summary, lowStock, openOrders] = await Promise.all([
-      reportsApi.summary(),
-      itemsApi.lowStock(),
-      ordersApi.list({ status: 'pendente', limit: 100 }),
-    ])
-    return { summary, lowStock, openOrders: openOrders.total }
+    const [summary, lowStock] = await Promise.all([reportsApi.summary(), itemsApi.lowStock()])
+    const todayOrders = summary.daily.find((day) => day.date === todayKey())?.orders ?? 0
+    return { summary, lowStock, todayOrders }
   }, [])
 
   return (
@@ -29,16 +37,35 @@ export function DashboardScreen() {
             description={`${data?.summary.orders_count ?? 0} pedidos`}
           />
           <MoneyCard
+            label="Pedidos hoje"
+            value={String(data?.todayOrders ?? 0)}
+            description="registrados no dia"
+          />
+          <MoneyCard
             label="Ticket médio"
             value={money(data?.summary.avg_ticket)}
-            description={`${data?.summary.total_discount ?? 0} em descontos`}
+            description={`${money(data?.summary.total_discount)} em descontos`}
           />
-          <MoneyCard label="Aguardando" value={String(data?.openOrders ?? 0)} description="pedidos pendentes" />
           <MoneyCard
             label="Estoque baixo"
             value={String(data?.lowStock.length ?? 0)}
             description="itens de revenda"
           />
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+          {['rascunho', 'pendente', 'em_producao', 'pronto', 'entregue'].map((status) => {
+            const count =
+              data?.summary.status_counts.find((item) => item.status === status)?.count ?? 0
+            return (
+              <Link
+                key={status}
+                to={`/orders?status=${status}`}
+                className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <MoneyCard label={statusLabels[status]} value={String(count)} description="pedidos" />
+              </Link>
+            )
+          })}
         </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <Card className="hidden lg:block">
@@ -47,6 +74,10 @@ export function DashboardScreen() {
               <CardDescription>O que você mais usa no dia a dia.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
+              <Link to="/orders/create" className={cn(buttonVariants({ variant: 'default', size: 'lg' }), 'justify-start')}>
+                <Plus data-icon="inline-start" />
+                Novo pedido
+              </Link>
               <Link to="/orders" className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'justify-start')}>
                 <ShoppingCart data-icon="inline-start" />
                 Ver pedidos

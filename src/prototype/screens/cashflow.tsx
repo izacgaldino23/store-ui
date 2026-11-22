@@ -3,11 +3,20 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cashApi } from '../api'
-import { expenseCategories, money, paymentMethods, shortDate } from '../constants'
+import {
+  expenseCategories,
+  money,
+  paymentLabel,
+  paymentMethods,
+  shortDate,
+  toEndOfDay,
+  toStartOfDay,
+} from '../constants'
 import { useAction, useApi } from '../hooks'
 import type { ExpenseCategory, PaymentMethod } from '../types'
-import { Field, MoneyCard, PageHeader, Select, StatePanel, Textarea } from '../ui'
+import { Field, MoneyCard, PageHeader, Pagination, Select, StatePanel, Textarea } from '../ui'
 
 const noRegister = (error: string) => /caixa|register|404|não.*aberto|nao.*aberto/i.test(error)
 
@@ -89,7 +98,10 @@ export function CurrentCashScreen() {
                   <CardDescription>Informe o valor contado em mãos.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-3">
-                  <Field label="Saldo final (R$)">
+                  <Field
+                    label="Saldo final (R$)"
+                    hint={`Diferença prevista: ${money(closing - (current.data.current_balance ?? current.data.starting_balance))}`}
+                  >
                     <Input
                       type="number"
                       min={0}
@@ -128,11 +140,24 @@ export function DailyReportScreen() {
       ) : (
         <StatePanel loading={loading} error={error}>
           {data && (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MoneyCard label="Vendas" value={money(data.total_sales)} />
-              <MoneyCard label="Despesas" value={money(data.total_expenses)} />
-              <MoneyCard label="Saldo esperado" value={money(data.expected_balance)} />
-              <MoneyCard label="Saldo inicial" value={money(data.starting_balance)} />
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Status: <span className="font-medium text-foreground">{data.status}</span> · Aberto em{' '}
+                {shortDate(data.opened_at)}
+                {data.closed_at ? ` · Fechado em ${shortDate(data.closed_at)}` : ''}
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <MoneyCard label="Vendas" value={money(data.total_sales)} />
+                <MoneyCard label="Despesas" value={money(data.total_expenses)} />
+                <MoneyCard label="Saldo inicial" value={money(data.starting_balance)} />
+                <MoneyCard label="Saldo esperado" value={money(data.expected_balance)} />
+                <MoneyCard label="Saldo final" value={money(data.closing_balance)} />
+                <MoneyCard
+                  label="Diferença"
+                  value={money(data.discrepancy)}
+                  description={data.discrepancy == null ? 'Ainda sem fechamento' : 'Conferido no fechamento'}
+                />
+              </div>
             </div>
           )}
         </StatePanel>
@@ -142,19 +167,83 @@ export function DailyReportScreen() {
 }
 
 export function CashHistoryScreen() {
-  const { data, loading, error } = useApi(() => cashApi.history(), [])
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [page, setPage] = useState(1)
+  const { data, loading, error } = useApi(
+    () =>
+      cashApi.history({
+        start_date: toStartOfDay(startDate),
+        end_date: toEndOfDay(endDate),
+        page,
+        limit: 20,
+      }),
+    [startDate, endDate, page],
+  )
   return (
     <>
       <PageHeader title="Histórico de caixa" description="Todos os caixas já abertos." />
-      <StatePanel loading={loading} error={error} empty={!data?.length}>
-        <div className="flex flex-col gap-2">
-          {data?.map((register) => (
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        <Field label="De">
+          <Input
+            type="date"
+            value={startDate}
+            onChange={(event) => {
+              setStartDate(event.target.value)
+              setPage(1)
+            }}
+          />
+        </Field>
+        <Field label="Até">
+          <Input
+            type="date"
+            value={endDate}
+            onChange={(event) => {
+              setEndDate(event.target.value)
+              setPage(1)
+            }}
+          />
+        </Field>
+      </div>
+      <StatePanel loading={loading} error={error} empty={!data?.registers.length}>
+        <div className="hidden overflow-x-auto rounded-lg border md:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Abertura</TableHead>
+                <TableHead>Fechamento</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Inicial</TableHead>
+                <TableHead>Final</TableHead>
+                <TableHead>Diferença</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data?.registers.map((register) => (
+                <TableRow key={register.id}>
+                  <TableCell>{shortDate(register.opened_at)}</TableCell>
+                  <TableCell>{register.closed_at ? shortDate(register.closed_at) : '-'}</TableCell>
+                  <TableCell>{register.status}</TableCell>
+                  <TableCell>{money(register.starting_balance)}</TableCell>
+                  <TableCell>
+                    {register.closing_balance != null
+                      ? money(register.closing_balance)
+                      : money(register.current_balance ?? 0)}
+                  </TableCell>
+                  <TableCell>{money(register.discrepancy)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="flex flex-col gap-2 md:hidden">
+          {data?.registers.map((register) => (
             <Card key={register.id} size="sm">
               <CardContent className="flex items-center justify-between gap-3 py-3">
                 <div>
                   <p className="font-medium">{shortDate(register.opened_at)}</p>
                   <p className="text-sm text-muted-foreground">
-                    {register.closed_at ? `Fechado ${shortDate(register.closed_at)}` : register.status}
+                    {register.status} · Diferença {money(register.discrepancy)}
                   </p>
                 </div>
                 <div className="text-right">
@@ -170,6 +259,7 @@ export function CashHistoryScreen() {
           ))}
         </div>
       </StatePanel>
+      <Pagination page={page} total={data?.total ?? 0} limit={20} onPageChange={setPage} />
     </>
   )
 }
@@ -179,13 +269,20 @@ export function ExpensesScreen() {
   const [amount, setAmount] = useState(0)
   const [method, setMethod] = useState<PaymentMethod>('dinheiro')
   const [category, setCategory] = useState<ExpenseCategory>('suprimentos')
-  const { data, loading, error, reload } = useApi(() => cashApi.expenses(), [])
+  const [filterCategory, setFilterCategory] = useState('')
+  const [page, setPage] = useState(1)
+  const limit = 20
+  const { data, loading, error, reload } = useApi(
+    () => cashApi.expenses({ category: filterCategory || undefined }),
+    [filterCategory],
+  )
   const add = useAction(async () => {
     await cashApi.addExpense({ description, amount, payment_method: method, category })
     setDescription('')
     setAmount(0)
     reload()
   })
+  const pageItems = data?.slice((page - 1) * limit, page * limit) ?? []
 
   return (
     <>
@@ -195,6 +292,22 @@ export function ExpensesScreen() {
           <AlertDescription>{add.error}</AlertDescription>
         </Alert>
       )}
+      <div className="mb-4 sm:max-w-xs">
+        <Select
+          value={filterCategory}
+          onChange={(event) => {
+            setFilterCategory(event.target.value)
+            setPage(1)
+          }}
+        >
+          <option value="">Todas as categorias</option>
+          {expenseCategories.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+      </div>
       <Card className="mb-5">
         <CardHeader>
           <CardTitle>Nova despesa</CardTitle>
@@ -245,15 +358,40 @@ export function ExpensesScreen() {
           </CardContent>
         </form>
       </Card>
-      <StatePanel loading={loading} error={error} empty={!data?.length}>
-        <div className="flex flex-col gap-2">
-          {data?.map((expense) => (
+      <StatePanel loading={loading} error={error} empty={!pageItems.length}>
+        <div className="hidden overflow-x-auto rounded-lg border md:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead>Categoria</TableHead>
+                <TableHead>Forma de pagamento</TableHead>
+                <TableHead className="text-right">Valor</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pageItems.map((expense) => (
+                <TableRow key={expense.id}>
+                  <TableCell>{shortDate(expense.registered_at)}</TableCell>
+                  <TableCell className="font-medium">{expense.description}</TableCell>
+                  <TableCell>{expense.category}</TableCell>
+                  <TableCell>{paymentLabel[expense.payment_method]}</TableCell>
+                  <TableCell className="text-right font-semibold">{money(expense.amount)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="flex flex-col gap-2 md:hidden">
+          {pageItems.map((expense) => (
             <Card key={expense.id} size="sm">
               <CardContent className="flex items-center justify-between gap-3 py-3">
                 <div>
                   <p className="font-medium">{expense.description}</p>
                   <p className="text-sm text-muted-foreground">
-                    {shortDate(expense.registered_at)} · {expense.category}
+                    {shortDate(expense.registered_at)} · {expense.category} ·{' '}
+                    {paymentLabel[expense.payment_method]}
                   </p>
                 </div>
                 <span className="font-semibold">{money(expense.amount)}</span>
@@ -262,6 +400,7 @@ export function ExpensesScreen() {
           ))}
         </div>
       </StatePanel>
+      <Pagination page={page} total={data?.length ?? 0} limit={limit} onPageChange={setPage} />
     </>
   )
 }

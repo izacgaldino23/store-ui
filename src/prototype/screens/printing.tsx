@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -19,9 +19,27 @@ export function PrintingScreen() {
   const [deleting, setDeleting] = useState<{ kind: 'paper' | 'addon'; id: string } | null>(null)
   const [paperPage, setPaperPage] = useState(1)
   const [addonPage, setAddonPage] = useState(1)
+  const [paperActive, setPaperActive] = useState('true')
+  const [addonActive, setAddonActive] = useState('true')
 
-  const papers = useApi(() => printingApi.papers({ active: true, page: paperPage, limit: 20 }), [paperPage])
-  const addons = useApi(() => printingApi.addons({ active: true, page: addonPage, limit: 20 }), [addonPage])
+  const papers = useApi(
+    () =>
+      printingApi.papers({
+        active: paperActive === '' ? undefined : paperActive === 'true',
+        page: paperPage,
+        limit: 20,
+      }),
+    [paperActive, paperPage],
+  )
+  const addons = useApi(
+    () =>
+      printingApi.addons({
+        active: addonActive === '' ? undefined : addonActive === 'true',
+        page: addonPage,
+        limit: 20,
+      }),
+    [addonActive, addonPage],
+  )
   const insumos = useApi(() => itemsApi.list({ type: 'insumo', limit: 100 }), [])
 
   const savePaper = useAction(async (payload: Parameters<typeof printingApi.savePaper>[0]) => {
@@ -34,6 +52,26 @@ export function PrintingScreen() {
     await printingApi.saveAddon(payload, editingAddon?.id)
     setAddonOpen(false)
     setEditingAddon(null)
+    addons.reload()
+  })
+  const reactivatePaper = useAction(async (paper: PrintPaper) => {
+    await printingApi.savePaper(
+      {
+        item_id: paper.item_id || undefined,
+        custom_name: paper.item_id ? undefined : paper.custom_name,
+        price_per_sheet: paper.price_per_sheet,
+        sheets_remaining: paper.sheets_remaining ?? undefined,
+        active: true,
+      },
+      paper.id,
+    )
+    papers.reload()
+  })
+  const reactivateAddon = useAction(async (addon: PrintAddon) => {
+    await printingApi.saveAddon(
+      { name: addon.name, price_type: addon.price_type, price_value: addon.price_value, active: true },
+      addon.id,
+    )
     addons.reload()
   })
   const remove = useAction(async () => {
@@ -55,6 +93,18 @@ export function PrintingScreen() {
             <h2 className="text-lg font-semibold">Papéis</h2>
             <p className="text-sm text-muted-foreground">Tipos de papel e valores por folha.</p>
           </div>
+          <Select
+            value={paperActive}
+            onChange={(event) => {
+              setPaperActive(event.target.value)
+              setPaperPage(1)
+            }}
+            className="sm:w-40"
+          >
+            <option value="true">Ativos</option>
+            <option value="false">Inativos</option>
+            <option value="">Todos</option>
+          </Select>
           <Button
             className="w-full sm:w-auto"
             onClick={() => {
@@ -74,6 +124,7 @@ export function PrintingScreen() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Preço por folha</TableHead>
                   <TableHead>Folhas restantes</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -83,27 +134,42 @@ export function PrintingScreen() {
                     <TableCell className="font-medium">{paper.display_name}</TableCell>
                     <TableCell>{money(paper.price_per_sheet)}</TableCell>
                     <TableCell>{paper.sheets_remaining ?? '-'}</TableCell>
+                    <TableCell>{paper.active ? 'Ativo' : 'Inativo'}</TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Editar ${paper.display_name}`}
-                          onClick={() => {
-                            setEditingPaper(paper)
-                            setPaperOpen(true)
-                          }}
-                        >
-                          <Pencil />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Excluir ${paper.display_name}`}
-                          onClick={() => setDeleting({ kind: 'paper', id: paper.id })}
-                        >
-                          <Trash2 />
-                        </Button>
+                        {!paper.active ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Reativar ${paper.display_name}`}
+                            disabled={reactivatePaper.busy}
+                            onClick={() => void reactivatePaper.run(paper)}
+                          >
+                            <RotateCcw />
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Editar ${paper.display_name}`}
+                              onClick={() => {
+                                setEditingPaper(paper)
+                                setPaperOpen(true)
+                              }}
+                            >
+                              <Pencil />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Excluir ${paper.display_name}`}
+                              onClick={() => setDeleting({ kind: 'paper', id: paper.id })}
+                            >
+                              <Trash2 />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -118,26 +184,43 @@ export function PrintingScreen() {
                   <CardTitle className="text-base">{paper.display_name}</CardTitle>
                   <CardDescription>{money(paper.price_per_sheet)} por folha</CardDescription>
                 </CardHeader>
-                {paper.sheets_remaining != null && (
-                  <CardContent className="text-sm text-muted-foreground">
-                    {paper.sheets_remaining} folhas disponíveis
-                  </CardContent>
-                )}
+                <CardContent className="text-sm text-muted-foreground">
+                  {paper.active ? 'Ativo' : 'Inativo'}
+                  {paper.sheets_remaining != null && ` · ${paper.sheets_remaining} folhas disponíveis`}
+                </CardContent>
                 <CardContent className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setEditingPaper(paper)
-                      setPaperOpen(true)
-                    }}
-                  >
-                    <Pencil data-icon="inline-start" />
-                    Editar
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => setDeleting({ kind: 'paper', id: paper.id })}>
-                    <Trash2 />
-                  </Button>
+                  {!paper.active ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={reactivatePaper.busy}
+                      onClick={() => void reactivatePaper.run(paper)}
+                    >
+                      <RotateCcw data-icon="inline-start" />
+                      Reativar
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingPaper(paper)
+                          setPaperOpen(true)
+                        }}
+                      >
+                        <Pencil data-icon="inline-start" />
+                        Editar
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeleting({ kind: 'paper', id: paper.id })}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -157,6 +240,18 @@ export function PrintingScreen() {
             <h2 className="text-lg font-semibold">Adicionais</h2>
             <p className="text-sm text-muted-foreground">Taxas por folha, por impressão ou percentuais.</p>
           </div>
+          <Select
+            value={addonActive}
+            onChange={(event) => {
+              setAddonActive(event.target.value)
+              setAddonPage(1)
+            }}
+            className="sm:w-40"
+          >
+            <option value="true">Ativos</option>
+            <option value="false">Inativos</option>
+            <option value="">Todos</option>
+          </Select>
           <Button
             className="w-full sm:w-auto"
             onClick={() => {
@@ -176,6 +271,7 @@ export function PrintingScreen() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Valor</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -187,27 +283,42 @@ export function PrintingScreen() {
                     <TableCell>
                       {addon.price_type === 'percentage' ? `${addon.price_value}%` : money(addon.price_value)}
                     </TableCell>
+                    <TableCell>{addon.active ? 'Ativo' : 'Inativo'}</TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Editar ${addon.name}`}
-                          onClick={() => {
-                            setEditingAddon(addon)
-                            setAddonOpen(true)
-                          }}
-                        >
-                          <Pencil />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Excluir ${addon.name}`}
-                          onClick={() => setDeleting({ kind: 'addon', id: addon.id })}
-                        >
-                          <Trash2 />
-                        </Button>
+                        {!addon.active ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Reativar ${addon.name}`}
+                            disabled={reactivateAddon.busy}
+                            onClick={() => void reactivateAddon.run(addon)}
+                          >
+                            <RotateCcw />
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Editar ${addon.name}`}
+                              onClick={() => {
+                                setEditingAddon(addon)
+                                setAddonOpen(true)
+                              }}
+                            >
+                              <Pencil />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Excluir ${addon.name}`}
+                              onClick={() => setDeleting({ kind: 'addon', id: addon.id })}
+                            >
+                              <Trash2 />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -227,21 +338,42 @@ export function PrintingScreen() {
                 <CardContent className="text-lg font-semibold">
                   {addon.price_type === 'percentage' ? `${addon.price_value}%` : money(addon.price_value)}
                 </CardContent>
+                <CardContent className="text-sm text-muted-foreground">
+                  {addon.active ? 'Ativo' : 'Inativo'}
+                </CardContent>
                 <CardContent className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setEditingAddon(addon)
-                      setAddonOpen(true)
-                    }}
-                  >
-                    <Pencil data-icon="inline-start" />
-                    Editar
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => setDeleting({ kind: 'addon', id: addon.id })}>
-                    <Trash2 />
-                  </Button>
+                  {!addon.active ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={reactivateAddon.busy}
+                      onClick={() => void reactivateAddon.run(addon)}
+                    >
+                      <RotateCcw data-icon="inline-start" />
+                      Reativar
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingAddon(addon)
+                          setAddonOpen(true)
+                        }}
+                      >
+                        <Pencil data-icon="inline-start" />
+                        Editar
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeleting({ kind: 'addon', id: addon.id })}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -343,8 +475,13 @@ function PaperPanel({
       }
     >
       <div className="grid gap-3">
+        {paper && (
+          <p className="text-xs text-muted-foreground">
+            Nome e vínculo do papel não mudam na edição.
+          </p>
+        )}
         <Field label="Insumo vinculado">
-          <Select value={itemId} onChange={(event) => setItemId(event.target.value)}>
+          <Select value={itemId} disabled={!!paper} onChange={(event) => setItemId(event.target.value)}>
             <option value="">Nome personalizado</option>
             {insumos.map((item) => (
               <option key={item.id} value={item.id}>
@@ -355,7 +492,12 @@ function PaperPanel({
         </Field>
         {!itemId && (
           <Field label="Nome personalizado">
-            <Input value={customName} onChange={(event) => setCustomName(event.target.value)} required />
+            <Input
+              value={customName}
+              disabled={!!paper}
+              onChange={(event) => setCustomName(event.target.value)}
+              required
+            />
           </Field>
         )}
         <Field label="Preço por folha (R$)">

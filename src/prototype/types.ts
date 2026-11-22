@@ -165,6 +165,13 @@ export interface Expense {
   registered_at: string
 }
 
+export interface CashHistoryResponse {
+  registers: CashRegister[]
+  total: number
+  page: number
+  limit: number
+}
+
 export interface DailyReport {
   register_id: string
   opened_at: string

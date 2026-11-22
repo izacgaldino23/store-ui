@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { emptyClient } from './constants'
+import { emptyClient, formatPhone, phoneDigits } from './constants'
 import type { Client } from './types'
 import { Field, Textarea } from './ui'
 import { SidePanel } from './side-panel'
 
-export type ClientPayload = Omit<Client, 'id' | 'active'>
+export type ClientPayload = Omit<Client, 'id' | 'active'> & { active?: boolean }
 
 export function ClientDialog({
   open,
@@ -31,7 +31,7 @@ export function ClientDialog({
     if (client) {
       setForm({
         name: client.name,
-        phone: client.phone || '',
+        phone: formatPhone(client.phone),
         city: client.city || '',
         street: client.street || '',
         neighborhood: client.neighborhood || '',
@@ -46,6 +46,8 @@ export function ClientDialog({
 
   const update = (patch: Partial<ClientPayload>) =>
     setForm((current) => ({ ...current, ...patch }))
+  const phoneLength = phoneDigits(form.phone || '').length
+  const phoneInvalid = !!form.phone && ![10, 11].includes(phoneLength)
 
   return (
     <SidePanel
@@ -59,7 +61,7 @@ export function ClientDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button disabled={busy || !form.name} onClick={() => onSave(form)}>
+          <Button disabled={busy || !form.name || phoneInvalid} onClick={() => onSave(form)}>
             {busy ? 'Salvando...' : 'Salvar'}
           </Button>
         </div>
@@ -69,8 +71,13 @@ export function ClientDialog({
         <Field label="Nome *">
           <Input value={form.name} onChange={(event) => update({ name: event.target.value })} required />
         </Field>
-        <Field label="Telefone">
-          <Input value={form.phone || ''} onChange={(event) => update({ phone: event.target.value })} />
+        <Field label="Telefone" hint={phoneInvalid ? 'Informe 10 ou 11 dígitos.' : undefined}>
+          <Input
+            value={form.phone || ''}
+            inputMode="tel"
+            placeholder="(00) 00000-0000"
+            onChange={(event) => update({ phone: formatPhone(event.target.value) })}
+          />
         </Field>
         <Field label="Cidade">
           <Input value={form.city || ''} onChange={(event) => update({ city: event.target.value })} />

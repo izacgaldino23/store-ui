@@ -4,7 +4,8 @@
 
 - `main`: legacy UI (Refine v4 + Ant Design v5). See git history for that stack.
 - `develop` (current): M-003 touch-first UI. All routed screens are migrated and call the Go API directly — no mocks, no Refine, no Ant Design.
-- Production promotion (`develop` → `main`) is **out of scope** for M-003.
+- Round A ported the remaining legacy gaps (dashboard counters, order filters/details/cancel reason/dirty guard, item stock/CSV filters, client phone/status, cash-flow filters, report presets/tables, print status) into `develop`.
+- Production promotion (`develop` → `main`) is **out of scope** for M-003 until Round A is validated in the preview.
 
 ## Stack
 

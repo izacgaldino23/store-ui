@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Download, Pencil, Plus } from 'lucide-react'
+import { ArrowLeft, Download, Pencil, Plus, Trash2, Wrench } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -43,9 +43,16 @@ export function ItemsScreen() {
   const [page, setPage] = useState(1)
   const debouncedSearch = useDebouncedValue(search)
   const [type, setType] = useState('')
+  const [barcode, setBarcode] = useState('')
+  const [sort, setSort] = useState('code')
+  const [order, setOrder] = useState<'asc' | 'desc'>('asc')
   const [importOpen, setImportOpen] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | undefined>()
+  const [adjusting, setAdjusting] = useState<CatalogItem | null>(null)
+  const [quantity, setQuantity] = useState(1)
+  const [adjustReason, setAdjustReason] = useState('Ajuste manual pelo PDV')
   const [summary, setSummary] = useState('')
   const [editingId, setEditingId] = useState<string | undefined>()
   const [panelOpen, setPanelOpen] = useState(false)
@@ -55,24 +62,59 @@ export function ItemsScreen() {
       itemsApi.list({
         search: debouncedSearch || undefined,
         type: type || undefined,
+        barcode: barcode || undefined,
+        sort,
+        order,
         page,
         limit: 20,
       }),
-    [debouncedSearch, type, page],
+    [debouncedSearch, type, barcode, sort, order, page],
   )
-  const remove = useAction(async () => {
-    if (selected.length === 1) await itemsApi.remove(selected[0])
-    else await itemsApi.removeMany(selected)
+  const remove = useAction(async (ids: string[]) => {
+    if (ids.length === 1) await itemsApi.remove(ids[0])
+    else await itemsApi.removeMany(ids)
     setSelected([])
     setDeleteOpen(false)
+    setDeletingId(undefined)
+    reload()
+  })
+  const adjust = useAction(async () => {
+    if (!adjusting) return
+    await itemsApi.adjustStock(adjusting.id, quantity, adjustReason)
+    setAdjusting(null)
     reload()
   })
   const importCsv = useAction(async (file: File) => {
     const result = await itemsApi.importCsv(file)
-    setSummary(`${result.created} de ${result.total} linhas importadas.`)
+    const skipped = result.skipped?.length
+      ? ` ${result.skipped.length} ignoradas: ${result.skipped
+          .map((row) => `linha ${row.line} (${row.reason})`)
+          .join('; ')}.`
+      : ''
+    setSummary(`${result.created} de ${result.total} linhas importadas.${skipped}`)
     setImportOpen(false)
     reload()
   })
+
+  const changeSort = (field: string) => {
+    if (sort === field) setOrder((current) => (current === 'asc' ? 'desc' : 'asc'))
+    else {
+      setSort(field)
+      setOrder('asc')
+    }
+    setPage(1)
+  }
+
+  const sortHeader = (field: string, label: string) => (
+    <button
+      type="button"
+      onClick={() => changeSort(field)}
+      className="inline-flex cursor-pointer items-center gap-1 hover:text-foreground"
+    >
+      {label}
+      <span className="text-xs">{sort === field ? (order === 'asc' ? '↑' : '↓') : '↕'}</span>
+    </button>
+  )
 
   const onFile = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -131,6 +173,18 @@ export function ItemsScreen() {
             </option>
           ))}
         </Select>
+        <Select
+          value={barcode}
+          onChange={(event) => {
+            setBarcode(event.target.value)
+            setPage(1)
+          }}
+          className="sm:max-w-xs"
+        >
+          <option value="">Com ou sem código de barras</option>
+          <option value="with">Com código de barras</option>
+          <option value="without">Sem código de barras</option>
+        </Select>
         {selected.length > 0 && (
           <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
             Excluir {selected.length}
@@ -143,8 +197,8 @@ export function ItemsScreen() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10" />
-                <TableHead>Código</TableHead>
-                <TableHead>Nome</TableHead>
+                <TableHead>{sortHeader('code', 'Código')}</TableHead>
+                <TableHead>{sortHeader('name', 'Nome')}</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Preço</TableHead>
                 <TableHead>Estoque</TableHead>
@@ -173,11 +227,35 @@ export function ItemsScreen() {
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>{itemTypes.find((option) => option.value === item.item_type)?.label}</TableCell>
                   <TableCell>{item.sale_price ? money(item.sale_price) : '-'}</TableCell>
-                  <TableCell>{item.item_type === 'revenda' ? item.current_stock ?? 0 : '-'}</TableCell>
+                  <TableCell>{['revenda', 'insumo'].includes(item.item_type) ? item.current_stock ?? 0 : '-'}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" aria-label={`Editar ${item.name}`} onClick={() => openPanel(item.id)}>
                         <Pencil />
+                      </Button>
+                      {['revenda', 'insumo'].includes(item.item_type) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Ajustar estoque de ${item.name}`}
+                          onClick={() => {
+                            setAdjusting(item)
+                            setQuantity(1)
+                          }}
+                        >
+                          <Wrench />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Excluir ${item.name}`}
+                        onClick={() => {
+                          setDeletingId(item.id)
+                          setDeleteOpen(true)
+                        }}
+                      >
+                        <Trash2 />
                       </Button>
                       <Link
                         to={`/items/${item.id}`}
@@ -218,12 +296,36 @@ export function ItemsScreen() {
                 </div>
                 <div className="hidden text-right sm:block">
                   <p className="font-semibold">{item.sale_price ? money(item.sale_price) : '-'}</p>
-                  {item.item_type === 'revenda' && (
+                  {['revenda', 'insumo'].includes(item.item_type) && (
                     <p className="text-sm text-muted-foreground">Estoque {item.current_stock ?? 0}</p>
                   )}
                 </div>
                 <Button variant="ghost" size="icon" aria-label={`Editar ${item.name}`} onClick={() => openPanel(item.id)}>
                   <Pencil />
+                </Button>
+                {['revenda', 'insumo'].includes(item.item_type) && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Ajustar estoque de ${item.name}`}
+                    onClick={() => {
+                      setAdjusting(item)
+                      setQuantity(1)
+                    }}
+                  >
+                    <Wrench />
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Excluir ${item.name}`}
+                  onClick={() => {
+                    setDeletingId(item.id)
+                    setDeleteOpen(true)
+                  }}
+                >
+                  <Trash2 />
                 </Button>
                 <Link to={`/items/${item.id}`} className="text-sm underline underline-offset-4">
                   Detalhes
@@ -246,12 +348,15 @@ export function ItemsScreen() {
       />
       <ConfirmDialog
         open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Excluir itens?"
+        onOpenChange={(open) => {
+          setDeleteOpen(open)
+          if (!open) setDeletingId(undefined)
+        }}
+        title={deletingId ? 'Excluir item?' : 'Excluir itens?'}
         description="Os itens serão desativados e não aparecerão mais no catálogo."
         busy={remove.busy}
         error={remove.error}
-        onConfirm={() => void remove.run()}
+        onConfirm={() => void remove.run(deletingId ? [deletingId] : selected)}
       />
       <ConfirmDialog
         open={importOpen}
@@ -264,6 +369,17 @@ export function ItemsScreen() {
         onConfirm={() => fileRef.current?.click()}
       />
       <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onFile} />
+      <AdjustDialog
+        open={!!adjusting}
+        onOpenChange={(open) => !open && setAdjusting(null)}
+        quantity={quantity}
+        reason={adjustReason}
+        busy={adjust.busy}
+        error={adjust.error}
+        onQuantity={setQuantity}
+        onReason={setAdjustReason}
+        onConfirm={() => void adjust.run()}
+      />
     </>
   )
 }
@@ -466,6 +582,10 @@ export function ItemDetailScreen() {
   const typeLabel = itemTypes.find((option) => option.value === item.item_type)?.label
   const isResale = item.item_type === 'revenda'
   const lowStock = isResale && (item.current_stock ?? 0) <= item.min_stock
+  const keywords = (item.keywords || '')
+    .split(/[,;]+/)
+    .map((word) => word.trim())
+    .filter(Boolean)
 
   return (
     <>
@@ -528,12 +648,30 @@ export function ItemDetailScreen() {
           </CardHeader>
           <CardContent>
             <dl className="divide-y">
+              <InfoRow label="Status" value={item.active ? 'Ativo' : 'Inativo'} />
               <InfoRow label="Nome de exibição" value={item.display_name} />
               <InfoRow label="Descrição" value={item.description} />
               <InfoRow label="Fornecedor" value={item.supplier} />
               <InfoRow label="Unidade" value={item.unit} />
               <InfoRow label="Unidades por pacote" value={item.units_per_pack} />
-              <InfoRow label="Palavras-chave" value={item.keywords} />
+              {!!keywords.length && (
+                <InfoRow
+                  label="Palavras-chave"
+                  value={
+                    <span className="flex flex-wrap gap-1">
+                      {keywords.map((word) => (
+                        <span
+                          key={word}
+                          className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                        >
+                          {word}
+                        </span>
+                      ))}
+                    </span>
+                  }
+                />
+              )}
+              <InfoRow label="Criado em" value={shortDate(item.created_at)} />
               <InfoRow label="Atualizado em" value={shortDate(item.updated_at)} />
             </dl>
           </CardContent>

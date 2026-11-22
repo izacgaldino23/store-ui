@@ -1,5 +1,6 @@
 import apiClient from '../providers/rest-client'
 import type {
+  CashHistoryResponse,
   CashRegister,
   Client,
   DailyReport,
@@ -135,6 +136,7 @@ export const printingApi = {
       custom_name?: string
       price_per_sheet: number
       sheets_remaining?: number
+      active?: boolean
     },
     id?: string,
   ) => {
@@ -174,7 +176,7 @@ export const clientsApi = {
     const { data } = await apiClient.get<Client>(`/clients/${id}`)
     return data
   },
-  save: async (payload: Omit<Client, 'id' | 'active'>, id?: string) => {
+  save: async (payload: Omit<Client, 'id' | 'active'> & { active?: boolean }, id?: string) => {
     const { data } = id
       ? await apiClient.put<Client>(`/clients/${id}`, payload)
       : await apiClient.post<Client>('/clients', payload)
@@ -204,16 +206,16 @@ export const cashApi = {
     })
     return data
   },
-  history: async () => {
-    const { data } = await apiClient.get<{ registers: CashRegister[] }>('/cash-register/history')
-    return unwrap(data?.registers, [])
+  history: async (params: Record<string, string | number | undefined> = {}) => {
+    const { data } = await apiClient.get<CashHistoryResponse>('/cash-register/history', { params })
+    return data
   },
   dailyReport: async () => {
     const { data } = await apiClient.get<DailyReport>('/cash-register/daily-report')
     return data
   },
-  expenses: async () => {
-    const { data } = await apiClient.get<Expense[]>('/expenses')
+  expenses: async (params: Record<string, string | undefined> = {}) => {
+    const { data } = await apiClient.get<Expense[]>('/expenses', { params })
     return unwrap(data, [])
   },
   addExpense: async (payload: {

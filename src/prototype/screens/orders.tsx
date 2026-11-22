@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, Pencil, Plus, ReceiptText, Trash2 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -13,10 +13,14 @@ import {
   computeDiscountAmount,
   computePrintTotal,
   discountTypeOptions,
+  formatPhone,
+  itemTypes,
   money,
   paymentLabel,
   shortDate,
   statusOptions,
+  toEndOfDay,
+  toStartOfDay,
 } from '../constants'
 import { useAction, useApi, useDebouncedValue } from '../hooks'
 import type {
@@ -54,25 +58,44 @@ interface PrintLine {
 }
 
 export function OrdersScreen() {
-  const [status, setStatus] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [status, setStatus] = useState(searchParams.get('status') ?? '')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [hasPrint, setHasPrint] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const debouncedSearch = useDebouncedValue(search)
+  useEffect(() => {
+    setStatus(searchParams.get('status') ?? '')
+  }, [searchParams])
   const { data, loading, error, reload } = useApi(
     () =>
       ordersApi.list({
         status: status || undefined,
+        start_date: toStartOfDay(startDate),
+        end_date: toEndOfDay(endDate),
+        has_print: hasPrint || undefined,
         client_search: debouncedSearch || undefined,
         page,
         limit: 20,
       }),
-    [status, debouncedSearch, page],
+    [status, startDate, endDate, hasPrint, debouncedSearch, page],
   )
+
+  const updateStatus = (value: string) => {
+    setStatus(value)
+    setPage(1)
+    const next = new URLSearchParams(searchParams)
+    if (value) next.set('status', value)
+    else next.delete('status')
+    setSearchParams(next, { replace: true })
+  }
 
   return (
     <>
       <PageHeader title="Pedidos" description="Acompanhe e finalize as vendas." />
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Input
           value={search}
           onChange={(event) => {
@@ -80,16 +103,8 @@ export function OrdersScreen() {
             setPage(1)
           }}
           placeholder="Buscar por cliente"
-          className="sm:max-w-xs"
         />
-        <Select
-          value={status}
-          onChange={(event) => {
-            setStatus(event.target.value)
-            setPage(1)
-          }}
-          className="sm:max-w-xs"
-        >
+        <Select value={status} onChange={(event) => updateStatus(event.target.value)}>
           <option value="">Todos os status</option>
           {statusOptions.map((option) => (
             <option key={option.value} value={option.value}>
@@ -97,6 +112,37 @@ export function OrdersScreen() {
             </option>
           ))}
         </Select>
+        <Select
+          value={hasPrint}
+          onChange={(event) => {
+            setHasPrint(event.target.value)
+            setPage(1)
+          }}
+        >
+          <option value="">Com ou sem impressão</option>
+          <option value="true">Com impressão</option>
+          <option value="false">Sem impressão</option>
+        </Select>
+        <Input
+          type="date"
+          value={startDate}
+          onChange={(event) => {
+            setStartDate(event.target.value)
+            setPage(1)
+          }}
+          aria-label="Data inicial"
+        />
+        <Input
+          type="date"
+          value={endDate}
+          onChange={(event) => {
+            setEndDate(event.target.value)
+            setPage(1)
+          }}
+          aria-label="Data final"
+        />
+      </div>
+      <div className="mb-4 flex">
         <Button variant="outline" className="w-full sm:ml-auto sm:w-auto" onClick={reload}>
           Atualizar
         </Button>
@@ -166,9 +212,10 @@ export function OrderDetailScreen() {
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [receiptOpen, setReceiptOpen] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
   const { data: order, loading, error, reload } = useApi(() => ordersApi.get(id), [id])
   const finalize = useAction((method: string) => ordersApi.finalize(id, method))
-  const cancel = useAction(() => ordersApi.cancel(id, 'Cancelado pelo PDV'))
+  const cancel = useAction((reason: string) => ordersApi.cancel(id, reason))
 
   if (loading || error || !order) {
     return (
@@ -217,7 +264,10 @@ export function OrderDetailScreen() {
       )}
       {order.status === 'cancelado' && (
         <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{order.cancel_reason || 'Pedido cancelado.'}</AlertDescription>
+          <AlertDescription>
+            {order.cancel_reason || 'Pedido cancelado.'}
+            {order.canceled_at && ` em ${shortDate(order.canceled_at)}`}
+          </AlertDescription>
         </Alert>
       )}
 
@@ -227,26 +277,76 @@ export function OrderDetailScreen() {
             <CardTitle>Itens</CardTitle>
             <CardDescription>Produtos e serviços do pedido.</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            {order.items.map((item) => (
-              <div key={item.id} className="flex justify-between gap-3 text-sm">
-                <span>
-                  {item.quantity}× {item.item_name}
-                </span>
-                <span>{money(item.total_price)}</span>
-              </div>
-            ))}
-            {order.prints.map((print) => (
-              <div key={print.id} className="flex justify-between gap-3 text-sm">
-                <span>
-                  {print.quantity}× {print.paper_name}
-                </span>
-                <span>{money(print.total_price)}</span>
-              </div>
-            ))}
-            {!order.items.length && !order.prints.length && (
-              <p className="text-sm text-muted-foreground">Sem itens.</p>
-            )}
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Produto</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead className="text-right">Qtd.</TableHead>
+                    <TableHead className="text-right">Unit.</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {order.items.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.item_name}</TableCell>
+                      <TableCell>
+                        {itemTypes.find((type) => type.value === item.item_type)?.label ?? item.item_type}
+                      </TableCell>
+                      <TableCell className="text-right">{item.quantity}</TableCell>
+                      <TableCell className="text-right">{money(item.unit_price)}</TableCell>
+                      <TableCell className="text-right font-semibold">{money(item.total_price)}</TableCell>
+                    </TableRow>
+                  ))}
+                  {!order.items.length && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        Sem itens.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="mt-4 overflow-x-auto border-t pt-4">
+              <h4 className="mb-2 font-semibold">Impressões</h4>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Papel</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Adicionais</TableHead>
+                    <TableHead className="text-right">Qtd.</TableHead>
+                    <TableHead className="text-right">Unit.</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {order.prints.map((print) => (
+                    <TableRow key={print.id}>
+                      <TableCell className="font-medium">{print.paper_name}</TableCell>
+                      <TableCell>{print.description || '-'}</TableCell>
+                      <TableCell>
+                        {print.addons.map((addon) => addon.name).join(', ') || '-'}
+                      </TableCell>
+                      <TableCell className="text-right">{print.quantity}</TableCell>
+                      <TableCell className="text-right">{money(print.unit_price)}</TableCell>
+                      <TableCell className="text-right font-semibold">{money(print.total_price)}</TableCell>
+                    </TableRow>
+                  ))}
+                  {!order.prints.length && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
+                        Sem impressões.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -330,12 +430,22 @@ export function OrderDetailScreen() {
         busy={cancel.busy}
         error={cancel.error}
         onConfirm={async () => {
-          if (await cancel.run()) {
+          if (await cancel.run(cancelReason.trim() || 'Cancelado pelo PDV')) {
             setCancelOpen(false)
+            setCancelReason('')
             reload()
           }
         }}
-      />
+      >
+        <Field label="Motivo (opcional)">
+          <Textarea
+            value={cancelReason}
+            maxLength={255}
+            onChange={(event) => setCancelReason(event.target.value)}
+            placeholder="Ex.: cliente desistiu"
+          />
+        </Field>
+      </ConfirmDialog>
     </>
   )
 }
@@ -363,6 +473,8 @@ function OrderForm({ orderId }: { orderId?: string }) {
   const [discountType, setDiscountType] = useState<DiscountType>('valor')
   const [discountValue, setDiscountValue] = useState(0)
   const [paymentOpen, setPaymentOpen] = useState(false)
+  const [guardOpen, setGuardOpen] = useState(false)
+  const [pendingPath, setPendingPath] = useState('/orders')
 
   const catalog = useApi(
     () =>
@@ -498,10 +610,19 @@ function OrderForm({ orderId }: { orderId?: string }) {
   }
 
   const invalid = subtotal <= 0 || discount > subtotal
+  const dirty = Boolean(cart.length || prints.length || notes || clientId || discountValue)
+  const requestLeave = (path: string) => {
+    if (!dirty) {
+      navigate(path)
+      return
+    }
+    setPendingPath(path)
+    setGuardOpen(true)
+  }
 
   return (
     <>
-      <Button variant="ghost" onClick={() => navigate('/orders')} className="mb-3">
+      <Button variant="ghost" onClick={() => requestLeave('/orders')} className="mb-3">
         <ArrowLeft data-icon="inline-start" />
         Pedidos
       </Button>
@@ -732,6 +853,7 @@ function OrderForm({ orderId }: { orderId?: string }) {
                   {clients.data?.clients.map((client) => (
                     <option key={client.id} value={client.id}>
                       {client.name}
+                      {client.phone ? ` · ${formatPhone(client.phone)}` : ''}
                     </option>
                   ))}
                 </Select>
@@ -865,6 +987,18 @@ function OrderForm({ orderId }: { orderId?: string }) {
         error={finalize.error}
         onConfirm={async (method) => {
           if (await finalize.run(method)) setPaymentOpen(false)
+        }}
+      />
+
+      <ConfirmDialog
+        open={guardOpen}
+        onOpenChange={setGuardOpen}
+        title="Descartar alterações?"
+        description="O pedido ainda não foi salvo. As alterações serão perdidas."
+        confirmLabel="Descartar"
+        onConfirm={() => {
+          setGuardOpen(false)
+          navigate(pendingPath)
         }}
       />
     </>

@@ -3,6 +3,23 @@ import type { Client, DiscountType, OrderStatus, PaymentMethod, PrintAddon, Prin
 export const money = (value?: number | null) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value ?? 0)
 
+export const toStartOfDay = (value?: string) =>
+  value ? new Date(`${value}T00:00:00`).toISOString() : undefined
+
+export const toEndOfDay = (value?: string) =>
+  value ? new Date(`${value}T23:59:59`).toISOString() : undefined
+
+export const phoneDigits = (value = '') => value.replace(/\D/g, '')
+
+export const formatPhone = (value = ''): string => {
+  const digits = phoneDigits(value).slice(0, 11)
+  if (!digits) return ''
+  if (digits.length <= 2) return `(${digits}`
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+}
+
 export const shortDate = (value?: string | null) =>
   value
     ? new Intl.DateTimeFormat('pt-BR', {
