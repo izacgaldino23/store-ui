@@ -2,10 +2,9 @@
 
 ## Branch state
 
-- `main`: legacy UI (Refine v4 + Ant Design v5). See git history for that stack.
-- `develop` (current): M-003 touch-first UI. All routed screens are migrated and call the Go API directly — no mocks, no Refine, no Ant Design.
-- Round A ported the remaining legacy gaps (dashboard counters, order filters/details/cancel reason/dirty guard, item stock/CSV filters, client phone/status, cash-flow filters, report presets/tables, print status) into `develop`.
-- Production promotion (`develop` → `main`) is **out of scope** for M-003 until Round A is validated in the preview.
+- `main` (current): M-003 touch-first UI. All routed screens call the Go API directly — no mocks, no Refine, no Ant Design.
+- `develop`: kept alive for future prototyping; currently mirrors `main`.
+- Round A ported the remaining legacy gaps (dashboard counters, order filters/details/cancel reason/dirty guard, item stock/CSV filters, client phone/status, cash-flow filters, report presets/tables, print status), then was promoted to `main` via PR #3. See git history for the legacy Refine/AntD stack.
 
 ## Stack
 
@@ -15,7 +14,7 @@
 - **HTTP:** Axios instance in `src/providers/rest-client.ts` (Bearer token, refresh-on-401 with one retry, `X-Timezone`, PT-BR error translation)
 - **Language:** TypeScript
 - **Package manager:** bun
-- **Deploy/preview:** Cloudflare Workers Previews via `npx wrangler preview`; `wrangler.json` has `previews: {}` and SPA fallback to `dist`. Branch `develop` preview: `https://develop-store-ui.izacgaldino.workers.dev`.
+- **Deploy/preview:** Cloudflare Workers. Production at `https://store-ui.izacgaldino.workers.dev` via `npx wrangler deploy`; branch previews via `npx wrangler preview` (`https://develop-store-ui.izacgaldino.workers.dev`). `wrangler.json` has `previews: {}` and SPA fallback to `dist`.
 
 ## Architecture
 
